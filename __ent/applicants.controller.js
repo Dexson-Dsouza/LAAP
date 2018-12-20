@@ -3,11 +3,12 @@ function createSchema(app, mssql, pool2) {
         getApplicants(req, res);
     });
 
-    function getApplicants(req, res){
+    function getApplicants(req, res) {
         pool2.then((pool) => {
             var request = pool.request();
-            request.input('page', mssql.Int, req.params.page);
-            request.input('limit', mssql.Int, req.params.limit);
+            console.log(req.query);
+            request.input('page', mssql.Int, req.query.page);
+            request.input('limit', mssql.Int, req.query.limit);
             request.input('jobId', mssql.Int, req.params.jobId);
             request.execute('sp_getApplicants').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();

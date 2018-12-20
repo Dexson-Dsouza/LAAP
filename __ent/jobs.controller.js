@@ -1,31 +1,28 @@
 function createSchema(app, mssql, pool2) {
-    app.get('/api/getJobsList/:page/:limit', (req, res) => {
-        getJobList(req, res);
-    });
+    var jwtToken = require("./jwt.controller");
+    app.get('/api/getJobsList/:page/:limit', getJobList);
 
-    app.get('/api/getJobsDetails/:jobId', (req, res) => {
-        getJobDetails(req, res);
-    });
+    app.get('/api/getJobsDetails/:jobId', getJobDetails);
 
-    app.get('/api/getlocations', (req, res) => {
-        getLocation(req, res);
-    });
+    app.get('/api/getlocations', getLocation);
 
-    app.get('/api/searchjobs', (req, res) => {
-        searchJobsByAllParams(req, res);
-    })
+    app.get('/api/searchjobs', searchJobsByAllParams)
 
-    app.get('/api/getcategories', (req, res) => {
-        getAllJobCategories(req, res);
-    });
+    app.get('/api/getcategories', getAllJobCategories);
 
-    app.get('/api/getJobsForRecruiter', (req, res) => {
-        getJobForRecruiters(req, res);
-    });
+    app.get('/api/getJobsForRecruiter', getJobForRecruiters);
 
-    app.get('/api/add-job', (req, res) => {
-        addJob(req, res);
-    });
+    app.get('/api/getjobtypes', getJobTypes);
+
+    app.post('/api/add-job', addJob);
+
+    app.get('/api/gettopjob', getTopJob);
+
+    var invalidRequestError = {
+        "name": "INVALID_REQUEST",
+        "code": "50079",
+        "msg": "your request has been rejected due to invalid request parameters"
+    };
 
     function getJobList(req, res) {
         pool2.then((pool) => {
@@ -135,6 +132,9 @@ function createSchema(app, mssql, pool2) {
     }
 
     function getJobForRecruiters(req, res) {
+        // jwtToken.verifyRequest(req, res, (decodedToken) => {
+        //     console.log(decodedToken.email);
+        // })
         pool2.then((pool) => {
             var request = pool.request();
             console.log(req.query);
@@ -154,8 +154,73 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function addJob(req, res){
-        
+    function addJob(req, res) {
+        jwtToken.verifyRequest(req, res, (decodedToken) => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    request.input('postedBy', mssql.Int, parseInt(req.body.postedBy));
+                    request.input('jobType', mssql.Int, parseInt(req.body.jobType));
+                    request.input('jobCategoryId', mssql.Int, parseInt(req.body.jobCategoryId));
+                    request.input('jobCompanyId', mssql.Int, parseInt(req.body.jobCompanyId));
+                    request.input('jobTitle', mssql.VarChar(500), req.body.jobTitle);
+                    request.input('jobCustomTitle', mssql.VarChar(100), req.body.jobCustomTitle);
+                    request.input('jobDescription', mssql.VarChar(mssql.MAX), req.body.jobDescription);
+                    request.input('numberOfPos', mssql.Int, parseInt(req.body.numberOfPos));
+                    request.input('jobLocationId', mssql.Int, parseInt(req.body.jobLocationId));
+                    request.input('expDate', mssql.VarChar(100), req.body.expDate);
+                    request.input('requiredEducation', mssql.VarChar(mssql.MAX), req.body.requiredEducation);
+                    request.input('requiredExperience', mssql.VarChar(mssql.MAX), req.body.requiredExperience);
+                    request.input('requiredSkills', mssql.VarChar(mssql.MAX), req.body.requiredSkills);
+                    request.input('jobPostedDate', mssql.VarChar(100), req.body.jobPostedDate);
+                    request.input('jobStatus', mssql.Int, parseInt(req.body.jobStatus));
+                    request.input('jobTravel', mssql.Int, parseInt(req.body.jobTravel));
+                    request.input('jobTravelDetails', mssql.VarChar(2000), req.body.jobTravelDetails);
+                    request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
+                    request.input('salary', mssql.Int, parseInt(req.body.salary));
+                    request.input('shift', mssql.VarChar(100), req.body.shift);
+                    request.execute('sp_AddJob').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Job updated successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        })
+    }
+
+    function getJobTypes(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            request.query('SELECT * FROM JobType').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: "Data retrieved successfully!", success: true, response: data.recordset });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function getTopJob(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            request.query('SELECT TOP 1 * FROM Jobs ORDER BY Id DESC').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: "Data retrieved successfully!", success: true, response: data.recordset[0] });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
     }
 }
 module.exports.loadSchema = createSchema;
