@@ -18,6 +18,8 @@ function createSchema(app, mssql, pool2) {
 
     app.get('/api/gettopjob', getTopJob);
 
+    app.post('/api/update-job', updateJob);
+
     var invalidRequestError = {
         "name": "INVALID_REQUEST",
         "code": "50079",
@@ -183,7 +185,7 @@ function createSchema(app, mssql, pool2) {
                     request.input('shift', mssql.VarChar(100), req.body.shift);
                     request.execute('sp_AddJob').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "Job updated successfully!", success: true, response: data.recordset });
+                        res.send({ message: "Job added successfully!", success: true, response: data.recordset });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
@@ -221,6 +223,50 @@ function createSchema(app, mssql, pool2) {
                 res.send(err);
             });
         });
+    }
+
+    function updateJob(req, res){
+        jwtToken.verifyRequest(req, res, (decodedToken) => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    // request.input('postedBy', mssql.Int, parseInt(req.body.postedBy));
+                    request.input('jobId', mssql.Int, parseInt(req.body.jobId));
+                    request.input('jobType', mssql.Int, parseInt(req.body.jobType));
+                    request.input('jobCategoryId', mssql.Int, parseInt(req.body.jobCategoryId));
+                    // request.input('jobCompanyId', mssql.Int, parseInt(req.body.jobCompanyId));
+                    request.input('jobTitle', mssql.VarChar(500), req.body.jobTitle);
+                    request.input('jobCustomTitle', mssql.VarChar(100), req.body.jobCustomTitle);
+                    request.input('jobDescription', mssql.VarChar(mssql.MAX), req.body.jobDescription);
+                    request.input('numberOfPos', mssql.Int, parseInt(req.body.numberOfPos));
+                    request.input('jobLocationId', mssql.Int, parseInt(req.body.jobLocationId));
+                    request.input('expDate', mssql.VarChar(100), req.body.expDate);
+                    request.input('requiredEducation', mssql.VarChar(mssql.MAX), req.body.requiredEducation);
+                    request.input('requiredExperience', mssql.VarChar(mssql.MAX), req.body.requiredExperience);
+                    request.input('requiredSkills', mssql.VarChar(mssql.MAX), req.body.requiredSkills);
+                    // request.input('jobPostedDate', mssql.VarChar(100), req.body.jobPostedDate);
+                    // request.input('jobStatus', mssql.Int, parseInt(req.body.jobStatus));
+                    request.input('jobTravel', mssql.Int, parseInt(req.body.jobTravel));
+                    request.input('jobTravelDetails', mssql.VarChar(2000), req.body.jobTravelDetails);
+                    // request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
+                    request.input('salary', mssql.Int, parseInt(req.body.salary));
+                    request.input('shift', mssql.VarChar(100), req.body.shift);
+                    request.execute('sp_UpdateJob').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Job updated successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        })
     }
 }
 module.exports.loadSchema = createSchema;
