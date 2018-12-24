@@ -20,6 +20,8 @@ function createSchema(app, mssql, pool2) {
 
     app.post('/api/update-job', updateJob);
 
+    app.get('/api/getjobstatus', getJobStatus);
+
     var invalidRequestError = {
         "name": "INVALID_REQUEST",
         "code": "50079",
@@ -142,10 +144,11 @@ function createSchema(app, mssql, pool2) {
             console.log(req.query);
             request.input('page', mssql.Int, req.query.page);
             request.input('limit', mssql.Int, req.query.limit);
-            request.input('jobCTitle', mssql.Int, req.query.jobCTitle);
+            request.input('jobCTitle', mssql.VarChar(100), req.query.jobCTitle);
             request.input('loc', mssql.Int, req.query.loc);
             request.input('category', mssql.Int, req.query.category);
-            request.input('categoryStr', mssql.VarChar(100), req.query.categoryStr);
+            request.input('postedById', mssql.Int, req.query.postedById);
+            request.input('jobStatus', mssql.Int, req.query.jobStatus);
             request.execute('sp_SearchJobsForRecruiter').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Data retrieved successfully!", success: true, response: data.recordset });
@@ -225,7 +228,7 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function updateJob(req, res){
+    function updateJob(req, res) {
         jwtToken.verifyRequest(req, res, (decodedToken) => {
             console.log(decodedToken.email);
             if (decodedToken.email) {
@@ -267,6 +270,19 @@ function createSchema(app, mssql, pool2) {
                 res.send(invalidRequestError);
             }
         })
+    }
+
+    function getJobStatus(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            request.query('SELECT * FROM JobStatus').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: "Data retrieved successfully!", success: true, response: data.recordset });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
     }
 }
 module.exports.loadSchema = createSchema;

@@ -31,7 +31,7 @@ app.use(bodyParser.urlencoded({
 var config = {
     user: 'sa',
     password: 'Infinite123#',
-    server: 'INMDCS45832\\MSSQLSERVER16',
+    server: 'INMDCD0212',
     port: 1433,
     database: 'Infinite_Centralized_DB',
     options: {

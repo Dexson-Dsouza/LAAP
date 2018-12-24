@@ -25,7 +25,7 @@ function createSchema(app, mssql, pool2) {
             if (auth) {
                 console.log('Authenticated!');
                 console.log(auth);
-                getUserDetails("sbhoybar", res);
+                getUserDetails(username.split("@")[0], res);
             }
             else {
                 console.log('Authentication failed!');
