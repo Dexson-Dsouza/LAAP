@@ -22,6 +22,8 @@ function createSchema(app, mssql, pool2) {
 
     app.get('/api/getjobstatus', getJobStatus);
 
+    app.post('/api/update-job-status', updateJobStatus);
+
     var invalidRequestError = {
         "name": "INVALID_REQUEST",
         "code": "50079",
@@ -278,6 +280,22 @@ function createSchema(app, mssql, pool2) {
             request.query('SELECT * FROM JobStatus').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Data retrieved successfully!", success: true, response: data.recordset });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function updateJobStatus(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            console.log(req.body);
+            var status = req.body.status;
+            var jobId = req.body.jobId;
+            request.query('UPDATE Jobs SET JobStatus=' + status + " WHERE Id=" + jobId).then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: 'Job Status updated successfully!', success: true });
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

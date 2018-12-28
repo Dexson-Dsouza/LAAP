@@ -1,4 +1,4 @@
-function createSchema(app, mssql, pool2) {
+function createSchema(app, mssql, pool2, fs) {
     var jwtToken = require("./jwt.controller");
     var ActiveDirectory = require('activedirectory');
     var adConfig = {
@@ -121,12 +121,15 @@ function createSchema(app, mssql, pool2) {
                 'displayName',
                 'picture',
                 'sn',
-                'dn'
+                'dn',
+                'thumbnailPhoto'
             ]
         }
+        var adConfig = {
+        url: 'ldap://ics.global',
+        baseDN: 'dc=ics,dc=global'
+    }
         var sAMAccountName = 'abhol';
-        var userPrincipalName = 'hbhambure@infinite-usa.com';
-        var dn = '(sAMAccountName="+sAMAccountName+")';
         adConfig.attributes = attributes;
         // Find user by a sAMAccountName
         var ad = new ActiveDirectory(adConfig);
@@ -142,6 +145,13 @@ function createSchema(app, mssql, pool2) {
             }
             else {
                 console.log(JSON.stringify(user));
+                var rest=user.thumbnailPhoto;
+                fs.writeFile("Thumb.jpg", user.thumbnailPhoto, function(err) {
+                    if(err) {
+                    console.log("errror writing thumbnail: "+err);
+                    } else {
+                    console.log("thumbnail was saved!");
+                    }})
                 res.send({ message: "User Details retrieved successfully!", success: true, response: user })
             };
         });

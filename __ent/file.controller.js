@@ -5,7 +5,7 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.get('/api/file/all', listUrlFiles);
 
-    app.get('/api/file/:filename', downloadFile);
+    app.get('/api/file', downloadFile);
 
     function uploadFile(req, res) {
         console.log("uploadFileCalled");
@@ -71,8 +71,6 @@ function createSchema(app, mssql, pool2, fs) {
 
             request.query('UPDATE Applicants SET ResumeFileId=' + resumeId + " WHERE Id=" + applicantId).then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
-                console.log("FileId Updated for applicant id");
-                console.log("File uploaded successfully!");
                 res.send({ message: 'File uploaded successfully!', success: true });
 
             }).catch(function (err) {
@@ -93,8 +91,9 @@ function createSchema(app, mssql, pool2, fs) {
     }
 
     function downloadFile(req, res) {
-        let filename = req.params.filename;
-        res.download(uploadFolder + filename);
+        console.log(req.query);
+        let filename = req.query.filename;
+        res.download('./uploads/resumes/' + req.query.applicantId + "/" + filename);
     }
 }
 module.exports.loadSchema = createSchema;

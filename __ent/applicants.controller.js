@@ -1,7 +1,11 @@
 function createSchema(app, mssql, pool2) {
     app.get('/api/get-applicants', getApplicants);
 
-    app.post('/api/add-applicant', addApplicant)
+    app.get('/api/get-applicant-status', getApplicantStatus);
+
+    app.post('/api/add-applicant', addApplicant);
+
+    app.post('/api/update-applicant-status', changeApplicantStatus);
 
     function getApplicants(req, res) {
         pool2.then((pool) => {
@@ -36,6 +40,36 @@ function createSchema(app, mssql, pool2) {
             request.execute('sp_AddApplicant').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Applicants added successfully!", success: true, response: data.recordset[0] });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function changeApplicantStatus(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            console.log(req.body);
+            var status = req.body.status;
+            var applicantId = req.body.applicantId;
+            request.query('UPDATE Applicants SET ApplicantStatus=' + status + " WHERE Id=" + applicantId).then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: 'Applicant Status updated successfully!', success: true });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function getApplicantStatus(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            console.log(req.query);
+            request.query('SELECT * FROM ApplicantStatus').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: "Applicants Status rerived successfully!", success: true, response: data.recordset });
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

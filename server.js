@@ -1,14 +1,15 @@
 var mssql = require('mssql'),
     async = require("async"),
-    fs = require('fs'),
+    fs = require('fs-extra'),
     express = require('express'),
     bodyParser = require('body-parser'),
     app = express(),
     cors = require('cors');
 
+global.__basedir = __dirname;
 // Allow urls from this array only
 var whitelist = ['http://localhost:4200', 'http://localhost:5200', 'http://localhost:4300'];
-
+var PORT =  8089;
 var corsOptions = {
     origin: function (origin, callback) {
         console.log(origin);
@@ -38,7 +39,10 @@ var config = {
         encrypt: false
     }
 };
-const pool = new mssql.ConnectionPool(config).connect();
+const pool = new mssql.ConnectionPool(config).connect().then(pool => {
+    console.log('Connected to MSSQL')
+    return pool
+}).catch(err => console.log('Database Connection Failed! Bad Config: ', err));
 
 const schemaFolder = './__ent/';
 fs.readdir(schemaFolder, function (err, files) {
@@ -46,7 +50,7 @@ fs.readdir(schemaFolder, function (err, files) {
         console.log("Loading Schema from " + file);
         var schemaObject = require(schemaFolder + file);
         if (typeof (schemaObject.loadSchema) == "function") {
-            schemaObject.loadSchema(app, mssql, pool);
+            schemaObject.loadSchema(app, mssql, pool, fs);
         }
         next();
     });
@@ -58,6 +62,6 @@ app.get('/', function (req, res) {
 });
 
 // port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
-app.listen(8080, function () {
-    console.log('Node app is running on port 8080');
+app.listen(PORT, function () {
+    console.log('Node app is running on port '+ PORT);
 });
