@@ -22,12 +22,24 @@ var corsOptions = {
     credentials: true
 };
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+
+const schemaFolder = './__ent/';
+fs.readdir(schemaFolder, function (err, files) {
+    async.eachSeries(files, function (file, next) {
+        console.log("Loading Schema from " + file);
+        var schemaObject = require(schemaFolder + file);
+        if (typeof (schemaObject.loadSchema) == "function") {
+            schemaObject.loadSchema(app, mssql, pool, fs);
+        }
+        next();
+    });
+});
 
 var config = {
     user: 'sa',
@@ -44,17 +56,6 @@ const pool = new mssql.ConnectionPool(config).connect().then(pool => {
     return pool
 }).catch(err => console.log('Database Connection Failed! Bad Config: ', err));
 
-const schemaFolder = './__ent/';
-fs.readdir(schemaFolder, function (err, files) {
-    async.eachSeries(files, function (file, next) {
-        console.log("Loading Schema from " + file);
-        var schemaObject = require(schemaFolder + file);
-        if (typeof (schemaObject.loadSchema) == "function") {
-            schemaObject.loadSchema(app, mssql, pool, fs);
-        }
-        next();
-    });
-});
 
 // default route
 app.get('/', function (req, res) {

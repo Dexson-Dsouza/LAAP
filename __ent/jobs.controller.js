@@ -1,5 +1,8 @@
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
+
+    var mailer = require("./mail.controller.js");
+
     app.get('/api/getJobsList/:page/:limit', getJobList);
 
     app.get('/api/getJobsDetails/:jobId', getJobDetails);
@@ -23,6 +26,12 @@ function createSchema(app, mssql, pool2) {
     app.get('/api/getjobstatus', getJobStatus);
 
     app.post('/api/update-job-status', updateJobStatus);
+
+    app.get('/api/sendMail', sendApprovalMail);
+
+    function sendApprovalMail() {
+        mailer.getJobApproverUsers(mssql, pool2, 191)
+    }
 
     var invalidRequestError = {
         "name": "INVALID_REQUEST",
@@ -191,6 +200,7 @@ function createSchema(app, mssql, pool2) {
                     request.execute('sp_AddJob').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "Job added successfully!", success: true, response: data.recordset });
+                        mailer.getJobApproverUsers(mssql, pool2, req.body.postedBy);
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
