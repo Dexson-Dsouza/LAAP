@@ -37,8 +37,8 @@ function createSchema(app, mssql, pool2, fs) {
     function getUserDetails(username, res) {
         pool2.then((pool) => {
             var request = pool.request();
-            console.log("SELECT * FROM Users WHERE UserName='" + username + "'")
-            request.query("SELECT * FROM Users WHERE UserName='" + username + "'").then(function (data, recordsets, returnValue, affected) {
+            request.input('username', mssql.VarChar(2000), username);
+            request.execute("sp_GetUserDetailsByUsername").then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "User retrieved successfully!", success: true, response: data.recordset[0], token: jwtToken.createJWTToken(data.recordset[0]) });
             }).catch(function (err) {
