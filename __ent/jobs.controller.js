@@ -27,6 +27,8 @@ function createSchema(app, mssql, pool2) {
 
   app.post("/api/update-job-status", updateJobStatus);
 
+  app.post("/api/addcategory", addCategory);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -482,14 +484,31 @@ function createSchema(app, mssql, pool2) {
             message: "Job Status updated successfully!",
             success: true
           });
-          if(status == 1){
+          if (status == 1) {
             mailer.sendMailAfterApproveJob(mssql, pool2, jobId);
-          }          
+          }
         })
         .catch(function (err) {
           console.log(err);
           res.send(err);
         });
+    });
+  }
+
+  function addCategory(req, res) {
+    pool2.then((pool) => {
+      var request = pool.request();
+      console.log(req.body);
+      request.input('category', mssql.VarChar(1000), parseInt(req.body.category));
+      var cat=req.body.category;
+      var catNicename =  cat.replace(/\s+/g, '-').toLowerCase();
+      request.query("INSERT INTO JobCategory(JobCategoryNicename,JobCategory) VALUES ('"+catNicename+"','"+cat+"')").then(function (data, recordsets, returnValue, affected) {
+        mssql.close();
+        res.send({ message: "Category added successfully!", success: true, response: data.recordset });
+      }).catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
     });
   }
 }

@@ -9,20 +9,20 @@ function createSchema(app, mssql, pool2) {
 
     app.post('/api/remove-user-permission', removeUserPermission);
 
-    function getUserDetails(username, res) {
-        pool2.then((pool) => {
-            var request = pool.request();
-            request.query("SELECT * FROM Users WHERE UserName='+username+'").then(function (data, recordsets, returnValue, affected) {
-                mssql.close();
-                res.send({ message: "User retrieved successfully!", success: true, response: data.recordset });
-            }).catch(function (err) {
-                console.log(err);
-                res.send(err);
-            });
-        }).catch(err=>{
-            console.log(err);
-        })
-    }
+    // function getUserDetails(username, res) {
+    //     pool2.then((pool) => {
+    //         var request = pool.request();
+    //         request.query("SELECT * FROM Users WHERE UserName='+username+'").then(function (data, recordsets, returnValue, affected) {
+    //             mssql.close();
+    //             res.send({ message: "User retrieved successfully!", success: true, response: data.recordset });
+    //         }).catch(function (err) {
+    //             console.log(err);
+    //             res.send(err);
+    //         });
+    //     }).catch(err=>{
+    //         console.log(err);
+    //     })
+    // }
 
     function getUserPermissions(req, res){
         pool2.then((pool) => {

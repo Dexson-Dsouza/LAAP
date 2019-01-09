@@ -104,7 +104,7 @@ function createSchema(app, mssql, pool2, fs) {
 
     })
 
-    app.get('/api/getUserDetails', (req, res) => {
+    app.get('/api/getUserDetailsFromAd', (req, res) => {
         var attributes = {
             user: [
                 'mail',
