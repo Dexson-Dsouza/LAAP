@@ -1,5 +1,6 @@
 function createSchema(app, mssql, pool2, fs) {
     let upload = require('./multer.config.js');
+    var mailer = require("./mail.controller.js");
 
     app.post('/api/file/upload/:applicantId', upload.single("file"), uploadFile);
 
@@ -72,7 +73,7 @@ function createSchema(app, mssql, pool2, fs) {
             request.query('UPDATE Applicants SET ResumeFileId=' + resumeId + " WHERE Id=" + applicantId).then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: 'File uploaded successfully!', success: true });
-
+                mailer.sendMailAfterApplicantsApplied(mssql, pool2, applicantId);
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

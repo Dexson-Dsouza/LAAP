@@ -27,6 +27,10 @@ function createSchema(app, mssql, pool2) {
 
   app.post("/api/update-job-status", updateJobStatus);
 
+  app.get("/api/mail", function () {
+    // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
+  });
+
   var invalidRequestError = {
     name: "INVALID_REQUEST",
     code: "50079",
@@ -40,7 +44,7 @@ function createSchema(app, mssql, pool2) {
       request.input("limit", mssql.Int, req.params.limit);
       request
         .execute("sp_GetJobsByPagination")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -48,7 +52,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -61,7 +65,7 @@ function createSchema(app, mssql, pool2) {
       request.input("jobId", mssql.Int, req.params.jobId);
       request
         .execute("sp_GetJobDetailsByJobId")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -69,7 +73,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset[0]
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -81,7 +85,7 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       request
         .query("SELECT * FROM Location")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -89,7 +93,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -104,7 +108,7 @@ function createSchema(app, mssql, pool2) {
       request.input("locationId", mssql.Int, req.params.locationId);
       request
         .execute("sp_SearchJobsByLocationIdPagination")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -112,7 +116,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -127,7 +131,7 @@ function createSchema(app, mssql, pool2) {
       request.input("str", mssql.VarChar(100), req.params.str);
       request
         .execute("sp_SearchJobsByTextPagination")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -135,7 +139,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -154,7 +158,7 @@ function createSchema(app, mssql, pool2) {
       request.input("categoryStr", mssql.VarChar(100), req.query.categoryStr);
       request
         .execute("sp_SearchJobsByAllSearchBox")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -162,7 +166,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -174,7 +178,7 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       request
         .query("SELECT * FROM JobCategory")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -182,7 +186,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -205,7 +209,7 @@ function createSchema(app, mssql, pool2) {
       request.input("jobStatus", mssql.Int, req.query.jobStatus);
       request
         .execute("sp_SearchJobsForRecruiter")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -213,7 +217,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -297,16 +301,16 @@ function createSchema(app, mssql, pool2) {
           request.input("shift", mssql.VarChar(100), req.body.shift);
           request
             .execute("sp_AddJob")
-            .then(function(data, recordsets, returnValue, affected) {
+            .then(function (data, recordsets, returnValue, affected) {
               mssql.close();
               res.send({
                 message: "Job added successfully!",
                 success: true,
                 response: data.recordset
               });
-              mailer.getJobApproverUsers(mssql, pool2, req.body.postedBy);
+              mailer.sendMailAfterJobAdd(mssql, pool2, req.body.postedBy, data.recordset[0].Id);
             })
-            .catch(function(err) {
+            .catch(function (err) {
               console.log(err);
               res.send(err);
             });
@@ -323,7 +327,7 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       request
         .query("SELECT * FROM JobType")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -331,7 +335,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -343,7 +347,7 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       request
         .query("SELECT TOP 1 * FROM Jobs ORDER BY Id DESC")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -351,7 +355,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset[0]
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -424,7 +428,7 @@ function createSchema(app, mssql, pool2) {
           request.input("shift", mssql.VarChar(100), req.body.shift);
           request
             .execute("sp_UpdateJob")
-            .then(function(data, recordsets, returnValue, affected) {
+            .then(function (data, recordsets, returnValue, affected) {
               mssql.close();
               res.send({
                 message: "Job updated successfully!",
@@ -432,7 +436,7 @@ function createSchema(app, mssql, pool2) {
                 response: data.recordset
               });
             })
-            .catch(function(err) {
+            .catch(function (err) {
               console.log(err);
               res.send(err);
             });
@@ -449,7 +453,7 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       request
         .query("SELECT * FROM JobStatus")
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Data retrieved successfully!",
@@ -457,7 +461,7 @@ function createSchema(app, mssql, pool2) {
             response: data.recordset
           });
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });
@@ -472,14 +476,17 @@ function createSchema(app, mssql, pool2) {
       var jobId = req.body.jobId;
       request
         .query("UPDATE Jobs SET JobStatus=" + status + " WHERE Id=" + jobId)
-        .then(function(data, recordsets, returnValue, affected) {
+        .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({
             message: "Job Status updated successfully!",
             success: true
           });
+          if(status == 1){
+            mailer.sendMailAfterApproveJob(mssql, pool2, jobId);
+          }          
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
           res.send(err);
         });

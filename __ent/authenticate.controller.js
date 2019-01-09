@@ -48,7 +48,7 @@ function createSchema(app, mssql, pool2, fs) {
         });
     }
 
-    app.get('/getDir', (req, res) => {
+    app.get('/api/getDir', (req, res) => {
         var username = 'sbhoybar@ics.global';
         var password = 'shriniwas@456';
         var ad = new ActiveDirectory(adConfig);
@@ -63,7 +63,7 @@ function createSchema(app, mssql, pool2, fs) {
         });
     })
 
-    app.get('/getUsers', (req, res) => {
+    app.get('/api/getADUsers', (req, res) => {
         var query = {
             filter: '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(givenName=*))',
             attributes: ['mail',
@@ -84,6 +84,8 @@ function createSchema(app, mssql, pool2, fs) {
                 'sn',
                 'dn']
         }
+        adConfig.username="sbhoybar@ics.global";
+        adConfig.password="shriniwas@456";
         var ad = new ActiveDirectory(adConfig);
         ad.findUsers(query, true, function (err, users) {
             if (err) {
@@ -102,7 +104,7 @@ function createSchema(app, mssql, pool2, fs) {
 
     })
 
-    app.get('/getUserDetails', (req, res) => {
+    app.get('/api/getUserDetails', (req, res) => {
         var attributes = {
             user: [
                 'mail',
@@ -156,7 +158,5 @@ function createSchema(app, mssql, pool2, fs) {
             };
         });
     })
-
-
 }
 module.exports.loadSchema = createSchema;

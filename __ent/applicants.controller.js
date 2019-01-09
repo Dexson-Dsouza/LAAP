@@ -1,4 +1,7 @@
 function createSchema(app, mssql, pool2) {
+
+    var mailer = require("./mail.controller.js");
+    
     app.get('/api/get-applicants', getApplicants);
 
     app.get('/api/get-applicant-status', getApplicantStatus);
@@ -40,6 +43,7 @@ function createSchema(app, mssql, pool2) {
             request.execute('sp_AddApplicant').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Applicants added successfully!", success: true, response: data.recordset[0] });
+                mailer.sendMailToApplicant(mssql, pool2, data.recordset[0].Id, req.body.AppliedForJob);
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);
