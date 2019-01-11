@@ -15,7 +15,7 @@ function createSchema(app, mssql, pool2) {
             request.input('IsDeleted', mssql.Int, req.body.IsDeleted);
             request.execute('sp_AddCommentOnJob').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
-                res.send({ message: "Comment added successfully!", success: true, response: data.recordset[0] });
+                res.send({ message: "Comment added successfully!", success: true });
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

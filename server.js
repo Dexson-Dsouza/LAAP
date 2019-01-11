@@ -14,8 +14,20 @@ var whitelist = [
   "http://localhost:4300"
 ];
 var PORT = 8089;
+
+// default route
+app.get("/", function (req, res) {
+  return res.send({ error: true, message: "hello" });
+});
+
+// port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
+app.listen(PORT, function () {
+  console.log("Node app is running on port " + PORT);
+  connectToDatabase();
+});
+
 var corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     console.log(origin);
     if (
       typeof origin == "undefined" ||
@@ -38,28 +50,33 @@ app.use(
     extended: true
   })
 );
-
-var config = {
-  user: "sa",
-  password: "Infinite123#",
-  server: "INMDCD0212",
-  port: 1433,
-  database: "Infinite_Centralized_DB",
-  options: {
-    encrypt: false
-  }
-};
-const pool = new mssql.ConnectionPool(config)
-  .connect()
-  .then(pool => {
-    console.log("Connected to MSSQL");
-    return pool;
-  })
-  .catch(err => console.log("Database Connection Failed! Bad Config: ", err));
+var pool;
+function connectToDatabase() {
+  var config = {
+    user: "sa",
+    password: "Infinite123#",
+    server: "INMDCD0212",
+    port: 1433,
+    database: "Infinite_Centralized_DB",
+    options: {
+      encrypt: false
+    }
+  };
+  pool = new mssql.ConnectionPool(config)
+    .connect()
+    .then(pool => {
+      console.log("Connected to MSSQL");
+      return pool;
+    })
+    .catch(err => {
+      console.log("Database Connection Failed! Bad Config: ", err)
+      connectToDatabase();
+    });
+}
 
 const schemaFolder = "./__ent/";
-fs.readdir(schemaFolder, function(err, files) {
-  async.eachSeries(files, function(file, next) {
+fs.readdir(schemaFolder, function (err, files) {
+  async.eachSeries(files, function (file, next) {
     console.log("Loading Schema from " + file);
     var schemaObject = require(schemaFolder + file);
     if (typeof schemaObject.loadSchema == "function") {
@@ -69,12 +86,3 @@ fs.readdir(schemaFolder, function(err, files) {
   });
 });
 
-// default route
-app.get("/", function(req, res) {
-  return res.send({ error: true, message: "hello" });
-});
-
-// port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
-app.listen(PORT, function() {
-  console.log("Node app is running on port " + PORT);
-});

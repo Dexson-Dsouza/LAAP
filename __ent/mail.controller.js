@@ -3,6 +3,7 @@ var fs = require("fs");
 var handlebars = require("handlebars");
 var async = require("async");
 var ICS_URL = 'http://localhost:4200/';
+var ICS_ADMIN_URL = "http://localhost:4200/login";
 var transporter = nodemailer.createTransport({
   host: "mail.infinite-usa.com",
   port: 25,
@@ -104,7 +105,8 @@ exports.sendMailAfterJobAdd = function (mssql, pool2, postedById, jobId) {
       var template = handlebars.compile(html);
       var replacements = {
         recruiter: a.DisplayName,
-        jobTitle: b.JobTitle
+        jobTitle: b.JobTitle,
+        loginLink:ICS_ADMIN_URL
       };
       var htmlToSend = template(replacements);
 
