@@ -1,7 +1,7 @@
 function createSchema(app, mssql, pool2) {
 
     var mailer = require("./mail.controller.js");
-    
+
     app.get('/api/get-applicants', getApplicants);
 
     app.get('/api/get-applicant-status', getApplicantStatus);
@@ -9,6 +9,8 @@ function createSchema(app, mssql, pool2) {
     app.post('/api/add-applicant', addApplicant);
 
     app.post('/api/update-applicant-status', changeApplicantStatus);
+
+    app.get('/api/getapplicantcomments', getApplicantComments);
 
     function getApplicants(req, res) {
         pool2.then((pool) => {
@@ -55,9 +57,12 @@ function createSchema(app, mssql, pool2) {
         pool2.then((pool) => {
             var request = pool.request();
             console.log(req.body);
-            var status = req.body.status;
-            var applicantId = req.body.applicantId;
-            request.query('UPDATE Applicants SET ApplicantStatus=' + status + " WHERE Id=" + applicantId).then(function (data, recordsets, returnValue, affected) {
+            request.input('applicantId', mssql.Int, req.body.applicantId);
+            request.input('statusId', mssql.Int, req.body.statusId);
+            request.input('note', mssql.VarChar(2000), req.body.note);
+            request.input('statusUpdateDate', mssql.VarChar(500), req.body.statusUpdateDate);
+            request.input('changedBy', mssql.Int, req.body.changedBy);
+            request.execute('sp_UpdateApplicantStatus').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: 'Applicant Status updated successfully!', success: true });
             }).catch(function (err) {
@@ -74,6 +79,20 @@ function createSchema(app, mssql, pool2) {
             request.query('SELECT * FROM ApplicantStatus').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Applicants Status rerived successfully!", success: true, response: data.recordset });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function getApplicantComments(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            request.input('ApplicantId', mssql.Int, req.query.ApplicantId);
+            request.execute('sp_GetApplicantComments').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: "Applicants Comments rerived successfully!", success: true, response: data.recordset });
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

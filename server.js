@@ -5,21 +5,25 @@ var mssql = require("mssql"),
   bodyParser = require("body-parser"),
   app = express(),
   cors = require("cors");
-
+cron = require('node-schedule');
 global.__basedir = __dirname;
 // Allow urls from this array only
 var whitelist = [
   "http://localhost:4200",
   "http://localhost:5200",
-  "http://localhost:4300"
+  "http://localhost:4300",
+  "http://192.168.1.55:3000",
+  "http://localhost:3200",
+  "http://192.168.1.55:3200",
+  "http://203.123.47.142:3200"
 ];
-var PORT = 8089;
+var PORT = 3300;
 
 // default route
 app.get("/", function (req, res) {
   return res.send({ error: true, message: "hello" });
 });
-
+app.set('view engine', 'jade');
 // port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
 app.listen(PORT, function () {
   console.log("Node app is running on port " + PORT);
@@ -66,6 +70,8 @@ function connectToDatabase() {
     .connect()
     .then(pool => {
       console.log("Connected to MSSQL");
+      console.log("Reading Files");
+      readDirectories();
       return pool;
     })
     .catch(err => {
@@ -74,15 +80,21 @@ function connectToDatabase() {
     });
 }
 
-const schemaFolder = "./__ent/";
-fs.readdir(schemaFolder, function (err, files) {
-  async.eachSeries(files, function (file, next) {
-    console.log("Loading Schema from " + file);
-    var schemaObject = require(schemaFolder + file);
-    if (typeof schemaObject.loadSchema == "function") {
-      schemaObject.loadSchema(app, mssql, pool, fs);
-    }
-    next();
+function readDirectories() {
+  const schemaFolder = "./__ent/";
+  fs.readdir(schemaFolder, function (err, files) {
+    async.eachSeries(files, function (file, next) {
+      console.log("Loading Schema from " + file);
+      var schemaObject = require(schemaFolder + file);
+      if (typeof schemaObject.loadSchema == "function") {
+        schemaObject.loadSchema(app, mssql, pool, fs);
+      }
+      next();
+    });
   });
-});
+}
 
+var j = cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
+  console.log('Cron Jobs Run every two hrs');
+  console.log(new Date());
+});

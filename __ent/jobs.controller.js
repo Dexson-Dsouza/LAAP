@@ -29,6 +29,10 @@ function createSchema(app, mssql, pool2) {
 
   app.post("/api/addcategory", addCategory);
 
+  app.get('/api/getshifts', getShifts);
+
+  app.get('/api/getcurrencies', getCurrencies);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -158,6 +162,7 @@ function createSchema(app, mssql, pool2) {
       request.input("str", mssql.VarChar(100), req.query.str);
       request.input("category", mssql.Int, req.query.category);
       request.input("categoryStr", mssql.VarChar(100), req.query.categoryStr);
+      request.input("jobStatus", mssql.Int, req.query.jobStatus);
       request
         .execute("sp_SearchJobsByAllSearchBox")
         .then(function (data, recordsets, returnValue, affected) {
@@ -300,7 +305,11 @@ function createSchema(app, mssql, pool2) {
             req.body.jobStatusUpdatedBy
           );
           request.input("salary", mssql.Int, parseInt(req.body.salary));
-          request.input("shift", mssql.VarChar(100), req.body.shift);
+          request.input("shift", mssql.Int, req.body.shift);
+          if (req.body.salary) {
+            request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
+          }
+          request.input('remark', mssql.VarChar(4000), req.body.remark);
           request
             .execute("sp_AddJob")
             .then(function (data, recordsets, returnValue, affected) {
@@ -427,7 +436,11 @@ function createSchema(app, mssql, pool2) {
           );
           // request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
           request.input("salary", mssql.Int, parseInt(req.body.salary));
-          request.input("shift", mssql.VarChar(100), req.body.shift);
+          request.input("shift", mssql.Int, req.body.shift);
+          if (req.body.salary) {
+            request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
+          }
+          request.input('remark', mssql.VarChar(4000), req.body.remark);
           request
             .execute("sp_UpdateJob")
             .then(function (data, recordsets, returnValue, affected) {
@@ -500,11 +513,37 @@ function createSchema(app, mssql, pool2) {
       var request = pool.request();
       console.log(req.body);
       request.input('category', mssql.VarChar(1000), parseInt(req.body.category));
-      var cat=req.body.category;
-      var catNicename =  cat.replace(/\s+/g, '-').toLowerCase();
-      request.query("INSERT INTO JobCategory(JobCategoryNicename,JobCategory) VALUES ('"+catNicename+"','"+cat+"')").then(function (data, recordsets, returnValue, affected) {
+      var cat = req.body.category;
+      var catNicename = cat.replace(/\s+/g, '-').toLowerCase();
+      request.query("INSERT INTO JobCategory(JobCategoryNicename,JobCategory) VALUES ('" + catNicename + "','" + cat + "')").then(function (data, recordsets, returnValue, affected) {
         mssql.close();
         res.send({ message: "Category added successfully!", success: true, response: data.recordset });
+      }).catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+    });
+  }
+
+  function getShifts(req, res) {
+    pool2.then((pool) => {
+      var request = pool.request();
+      request.query("SELECT * FROM Shift").then(function (data, recordsets, returnValue, affected) {
+        mssql.close();
+        res.send({ message: "Shifts retrived successfully!", success: true, response: data.recordset });
+      }).catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+    });
+  }
+
+  function getCurrencies(req, res) {
+    pool2.then((pool) => {
+      var request = pool.request();
+      request.query("SELECT * FROM Currency").then(function (data, recordsets, returnValue, affected) {
+        mssql.close();
+        res.send({ message: "Currency retrived successfully!", success: true, response: data.recordset });
       }).catch(function (err) {
         console.log(err);
         res.send(err);
