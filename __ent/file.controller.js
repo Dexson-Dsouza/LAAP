@@ -61,10 +61,11 @@ function createSchema(app, mssql, pool2, fs) {
         if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
         return d.toString();
     }
-
+    
     function getDate() {
-        return new Date().getUTCFullYear() + "-" + twoDigits(1 + new Date().getUTCMonth()) + "-" + twoDigits(new Date().getUTCDate()) + " " + twoDigits(new Date().getUTCHours()) + ":" + twoDigits(new Date().getUTCMinutes()) + ":" + twoDigits(new Date().getUTCSeconds());
+        return new Date().getUTCFullYear() + "-" + twoDigits(1 + new Date().getUTCMonth()) + "-" + twoDigits(new Date().getUTCDate()) + " " + new Date().getHours() + ":" + new Date().getMinutes() + ":" + new Date().getSeconds();
     }
+    
     function updateResumeOfApplicant(res, resumeId, applicantId) {
         console.log("UpdateResumeOfApplicant called");
         pool2.then((pool) => {
@@ -73,7 +74,7 @@ function createSchema(app, mssql, pool2, fs) {
             request.query('UPDATE Applicants SET ResumeFileId=' + resumeId + " WHERE Id=" + applicantId).then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: 'File uploaded successfully!', success: true });
-                mailer.sendMailAfterApplicantsApplied(mssql, pool2, applicantId);
+                mailer.sendMailAfterApplicantsApplied(applicantId);
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

@@ -14,7 +14,7 @@ function createSchema(app, mssql, pool2, fs) {
         var username = new Buffer.from(new Buffer.from(req.body.clientId, 'base64').toString(), 'base64').toString();
         username = username.split("@")[0] + "@ics.global"
         var password = new Buffer.from(new Buffer.from(req.body.clientToken, 'base64').toString(), 'base64').toString();
-      
+
         ad.authenticate(username, password, function (err, auth) {
             if (err) {
                 console.log('ERROR: ' + JSON.stringify(err));
@@ -47,75 +47,5 @@ function createSchema(app, mssql, pool2, fs) {
             });
         });
     }
-
-    app.get('/api/getDir', (req, res) => {
-        var username = 'sbhoybar@ics.global';
-        var password = 'shriniwas@456';
-        var ad = new ActiveDirectory(adConfig);
-        ad.userExists(username, function (err, exists) {
-            if (err) {
-                console.log('ERROR: ' + JSON.stringify(err));
-                res.send({ message: err, success: false });
-                return;
-            }
-            console.log(username + ' exists: ' + exists);
-            res.send({ message: username + ' exists: ' + exists, success: true })
-        });
-    })
-
-    app.get('/api/getUserDetailsFromAd', (req, res) => {
-        var attributes = {
-            user: [
-                'mail',
-                'userPrinicipalName',
-                'st',
-                'l',
-                'department',
-                'company',
-                'title',
-                'co',
-                'telephoneNumber',
-                'employeeNumber',
-                'mobile',
-                'sAMAccountName',
-                'givenName',
-                'displayName',
-                'picture',
-                'sn',
-                'dn',
-                'thumbnailPhoto'
-            ]
-        }
-        var adConfig = {
-        url: 'ldap://ics.global',
-        baseDN: 'dc=ics,dc=global'
-    }
-        var sAMAccountName = 'abhol';
-        adConfig.attributes = attributes;
-        // Find user by a sAMAccountName
-        var ad = new ActiveDirectory(adConfig);
-        ad.findUser(sAMAccountName, function (err, user) {
-            if (err) {
-                console.log('ERROR: ' + JSON.stringify(err));
-                res.send({ message: err, success: false });
-                return;
-            }
-            if (!user) {
-                console.log('User: ' + sAMAccountName + ' not found.');
-                res.send({ message: 'User: ' + sAMAccountName + ' not found.', success: false });
-            }
-            else {
-                console.log(JSON.stringify(user));
-                var rest=user.thumbnailPhoto;
-                fs.writeFile("Thumb.jpg", user.thumbnailPhoto, function(err) {
-                    if(err) {
-                    console.log("errror writing thumbnail: "+err);
-                    } else {
-                    console.log("thumbnail was saved!");
-                    }})
-                res.send({ message: "User Details retrieved successfully!", success: true, response: user })
-            };
-        });
-    })
 }
 module.exports.loadSchema = createSchema;

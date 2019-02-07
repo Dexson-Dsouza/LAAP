@@ -5,7 +5,7 @@ var mssql = require("mssql"),
   bodyParser = require("body-parser"),
   app = express(),
   cors = require("cors");
-cron = require('node-schedule');
+  cron = require('node-schedule');
 global.__basedir = __dirname;
 // Allow urls from this array only
 var whitelist = [
@@ -61,7 +61,7 @@ function connectToDatabase() {
     password: "Infinite123#",
     server: "INMDCD0212",
     port: 1433,
-    database: "Infinite_Centralized_DB",
+    database: "Infinite_Centralized_DB_Test",
     options: {
       encrypt: false
     }
@@ -94,7 +94,9 @@ function readDirectories() {
   });
 }
 
-var j = cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
-  console.log('Cron Jobs Run every two hrs');
+var syncWithAd = require('./__ent/datamigrate.controller');
+cron.scheduleJob('0 0 */1 * * *', function () {//run every hour when minute = 1
+  console.log('Cron Jobs Run every 3 hrs');
   console.log(new Date());
+  syncWithAd.syncData();
 });

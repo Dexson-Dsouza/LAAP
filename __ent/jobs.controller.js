@@ -33,6 +33,8 @@ function createSchema(app, mssql, pool2) {
 
   app.get('/api/getcurrencies', getCurrencies);
 
+  app.post('/api/addlocation', addLocation);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -319,7 +321,7 @@ function createSchema(app, mssql, pool2) {
                 success: true,
                 response: data.recordset
               });
-              mailer.sendMailAfterJobAdd(mssql, pool2, req.body.postedBy, data.recordset[0].Id);
+              mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
             })
             .catch(function (err) {
               console.log(err);
@@ -498,7 +500,7 @@ function createSchema(app, mssql, pool2) {
             success: true
           });
           if (status == 1) {
-            mailer.sendMailAfterApproveJob(mssql, pool2, jobId);
+            mailer.sendMailAfterApproveJob(jobId);
           }
         })
         .catch(function (err) {
@@ -544,6 +546,27 @@ function createSchema(app, mssql, pool2) {
       request.query("SELECT * FROM Currency").then(function (data, recordsets, returnValue, affected) {
         mssql.close();
         res.send({ message: "Currency retrived successfully!", success: true, response: data.recordset });
+      }).catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+    });
+  }
+
+  function addLocation(req, res) {
+    pool2.then((pool) => {
+      var request = pool.request();
+      console.log(req.body);
+      request.input('StreetAddress', mssql.VarChar(500), req.body.StreetAddress);
+      request.input('City', mssql.VarChar(50), req.body.City);
+      request.input('State', mssql.VarChar(50), req.body.State);
+      request.input('Country', mssql.VarChar(50), req.body.Country);
+      request.input('Zipcode', mssql.VarChar(50), req.body.Zipcode);
+      request.input('Lat', mssql.VarChar(500), req.body.Lat);
+      request.input('Long', mssql.VarChar(500), req.body.Long);
+      request.execute('sp_AddLocation').then(function (data, recordsets, returnValue, affected) {
+        mssql.close();
+        res.send({ message: "Location added successfully!", success: true, response: data.recordset[0] });
       }).catch(function (err) {
         console.log(err);
         res.send(err);
