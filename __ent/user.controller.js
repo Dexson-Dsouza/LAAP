@@ -1,4 +1,11 @@
-function createSchema(app, mssql, pool2) {
+function createSchema(app, mssql, pool2, fs) {
+    let upload = require('./multer.config.js');
+
+    //FILE TYPES
+    var PROFILE_PIC = 1;
+
+    app.post('/api/file/uploadProfile/:userId', upload.single("file"), uploadProfilePicOfUser);
+
     app.get('/api/getuser', getUserDetails);
 
     app.get('/api/getuserpermissions', getUserPermissions);
@@ -9,22 +16,7 @@ function createSchema(app, mssql, pool2) {
 
     app.post('/api/remove-user-permission', removeUserPermission);
 
-    // function getUserDetails(username, res) {
-    //     pool2.then((pool) => {
-    //         var request = pool.request();
-    //         request.query("SELECT * FROM Users WHERE UserName='+username+'").then(function (data, recordsets, returnValue, affected) {
-    //             mssql.close();
-    //             res.send({ message: "User retrieved successfully!", success: true, response: data.recordset });
-    //         }).catch(function (err) {
-    //             console.log(err);
-    //             res.send(err);
-    //         });
-    //     }).catch(err=>{
-    //         console.log(err);
-    //     })
-    // }
-
-    function getUserPermissions(req, res){
+    function getUserPermissions(req, res) {
         pool2.then((pool) => {
             var request = pool.request();
             console.log(req.query);
@@ -69,7 +61,7 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function removeUserPermission(req, res){
+    function removeUserPermission(req, res) {
         pool2.then((pool) => {
             var request = pool.request();
             console.log(req.body);
@@ -85,5 +77,85 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
+    function uploadProfilePicOfUser(req, res) {
+        console.log(req.params);
+        if (!req.file) {
+            console.log("No file received");
+            res.send({
+                success: false
+            });
+        } else {
+            var filename = req.file.originalname;
+            console.log(filename);
+            console.log('file received');
+            var tmpPath = "./uploads/tmpDir/" + req.file.originalname;
+            var newDir = "./uploads/profile/" + req.params.userId;
+            var newFile = newDir + "/" + req.file.originalname;
+            console.log(newFile);
+            if (!fs.existsSync(newDir)) {
+                fs.mkdirSync(newDir);
+            }
+            fs.stat(newFile, function (err, stat) {
+                if (err == null) {
+                    console.log('File exists');
+                    addProfilePicToDatabase(res, req.file.originalname, req.params.userId);
+                } else if (err.code === 'ENOENT') {
+                    // file does not exist
+                    console.log('File not exists on location... so adding new file');
+                    fs.move(tmpPath, newFile, function (err) {
+                        if (err) throw err
+                        console.log('File Uploaded Successfully renamed - AKA moved!');
+                        addProfilePicToDatabase(res, req.file.originalname, req.params.userId);
+                    })
+                } else {
+                    console.log('Some other error: ', err.code);
+                    fs.move(tmpPath, newFile, function (err) {
+                        if (err) throw err
+                        console.log('File Uploaded Successfully renamed - AKA moved!');
+                        addProfilePicToDatabase(res, req.file.originalname, req.params.userId);
+                    })
+                }
+            });
+        }
+    }
+
+    function addProfilePicToDatabase(res, newFile, userId) {
+        console.log("File added to database called");
+        pool2.then((pool) => {
+            console.log(newFile);
+            console.log(userId);
+            var request = pool.request();
+            request.input('FileName', mssql.VarChar(500), newFile);
+            request.input('FileType', mssql.Int, PROFILE_PIC);
+            request.input('FileExtension', mssql.VarChar(100), newFile.split(".")[1]);
+            request.input('FilePath', mssql.VarChar(2000), newFile);
+            request.input('FileUploadDate', mssql.VarChar(500), new Date().getTime());
+            request.input('AddedBy', mssql.Int, userId);
+            request.execute('sp_AddUserFile').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                console.log("File added to database successfully");
+                console.log(JSON.stringify(data));
+                updatePicOfUser(res, data.recordset[0].Id, userId)
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function updatePicOfUser(res, fileId, userId) {
+        console.log("Update Profile pic called");
+        pool2.then((pool) => {
+            var request = pool.request();
+
+            request.query('UPDATE Users SET Photo=' + fileId + " WHERE Id=" + userId).then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                res.send({ message: 'Profile Pic uploaded successfully!', success: true });
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
 }
 module.exports.loadSchema = createSchema;

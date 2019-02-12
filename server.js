@@ -46,6 +46,7 @@ var corsOptions = {
   credentials: true
 };
 
+app.use('/profileimg', express.static(__dirname+'/uploads/'));
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.json({ type: "application/vnd.api+json" }));
@@ -54,6 +55,7 @@ app.use(
     extended: true
   })
 );
+
 var pool;
 function connectToDatabase() {
   var config = {

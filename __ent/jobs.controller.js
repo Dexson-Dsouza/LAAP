@@ -566,7 +566,8 @@ function createSchema(app, mssql, pool2) {
       request.input('Long', mssql.VarChar(500), req.body.Long);
       request.execute('sp_AddLocation').then(function (data, recordsets, returnValue, affected) {
         mssql.close();
-        res.send({ message: "Location added successfully!", success: true, response: data.recordset[0] });
+        console.log(data);
+        res.send({ message: "Location added successfully!", success: true});
       }).catch(function (err) {
         console.log(err);
         res.send(err);

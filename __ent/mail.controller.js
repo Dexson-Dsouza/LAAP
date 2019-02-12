@@ -18,6 +18,10 @@ function createSchema(thisapp, thismssql, thispool2) {
   app = thisapp;
   mssql = thismssql;
   pool2 = thispool2;
+
+  app.get('/api/sendmailtoirrelevantapplicant', sendMailToIrrelevantApplicant);
+
+  app.post('/api/sdmonaddcommentonjob', sendMailAfterCommentAddedOnJob);
 }
 
 var readHTMLFile = function (path, callback) {
@@ -216,26 +220,46 @@ function getJobDetailsWithRecruiter(callback, jobId) {
 **with/without details of recruiter 
 */
 function triggerMailToApplicant(aResult, bResult) {
-  var tmplPath, replacements;
+  var tmplPath, replacements, subject;
   if (typeof (aResult) != "undefined") {
-    tmplPath = "recruiter-details-to-candidate.html";
+    tmplPath = "toapplicantwithjob.html";
     replacements = {
       applicantName: bResult.Name,
       recruiterName: aResult.DisplayName,
-      recruiterEmail: aResult.EmailAddress
+      recruiterEmail: aResult.EmailAddress,
+      jobTitle: aResult.JobTitle
     };
+    subject = 'Application received for the role of ' + aResult.JobTitle;
   } else {
-    tmplPath = "thankstoCandidate.html";
+    tmplPath = "toapplicantwithoutjob.html";
     replacements = {
       applicantName: bResult.Name
     }
+    subject = 'Application received!'
   }
   console.log(bResult.EmailAddress);
   console.log("Mail sending to the applicant: ", bResult.EmailAddress);
   console.log("Content: ", replacements);
-  triggerMail(tmplPath, replacements, bResult.EmailAddress, "Infinite Computing Systems : Thank you");
+  triggerMail(tmplPath, replacements, bResult.EmailAddress, subject);
 }
 
+/*
+**THis function returns the comment details
+*/
+function getCommentDetails(callback, commentId) {
+  pool2.then(pool => {
+    var request = pool.request();
+    var q = "SELECT CommentsOnJob.Id As CommentId, *  FROM CommentsOnJob LEFT JOIN Users ON Users.Id = CommentsOnJob.UserId WHERE CommentsOnJob.Id=" + commentId;
+    request.query(q).then(function (data) {
+      mssql.close();
+      callback(null, data.recordset[0]);
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
 /*
 **THis function send mail to the approvers that
 **new job is added, pls review and publish it
@@ -308,7 +332,7 @@ function sendMailAfterApplicantsApplied(applicantId) {
   ], function (err, results) {
     var aResult = results[0];
     var bResult = results[1];
-    
+
     if (typeof (bResult.AppliedForJob) != 'null') {
       pool2.then(pool => {
         var request = pool.request();
@@ -352,6 +376,60 @@ function sendMailToApplicant(applicantId, jobId) {
 }
 
 /*
+**THis function send mail to the applicant which
+**are irrelevant with the current vacancies.
+*/
+function sendMailToIrrelevantApplicant(applicantDetails, irrelevantType) {
+  var tmplPath = "irrelevantjobapplication.html", subject;
+  var replacements = {
+    applicantName: applicantDetails.Name
+  }
+  if (irrelevantType == 1) {
+    subject = 'Update on your Application Status!';
+  } else {
+    subject = 'Update on your Candidature!'
+  }
+  console.log(applicantDetails.EmailAddress);
+  console.log("Mail sending to the applicant: ", applicantDetails.EmailAddress);
+  console.log("Content: ", replacements);
+  triggerMail(tmplPath, replacements, applicantDetails.EmailAddress, subject);
+}
+
+/*
+**THis function send mail to the after comment added on job
+*/
+function sendMailAfterCommentAddedOnJob(req, res) {
+  console.log(req.body);
+  var commentId = req.body.commentId;
+  var c = req.body.emails;
+  var emails = c.split(",");
+  var jobTitle = req.body.jobTitle;
+  async.series([
+    function (callback) {
+      getCommentDetails(callback, commentId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    console.log(emails);
+    res.send({ success: true, message: "mail sent" });
+    triggerMailOnCommentAddedOnJob(aResult, emails, jobTitle);
+  });
+}
+
+/*
+**THis function trigger mail to the users/job authors
+**that new comment has been added on job 
+*/
+function triggerMailOnCommentAddedOnJob(commentDetails, emails, jobTitle) {
+  var tmplPath = "new-comment.html", replacements;
+  replacements = {
+    CommentAuthor: commentDetails.DisplayName,
+    jobTitle: jobTitle,
+    CommentContent: commentDetails.Comment
+  };
+  triggerMail(tmplPath, replacements, emails.join(","), "New Comment added on " + jobTitle);
+}
+/*
 **This is a single function to trigger a mail.
 **all mails are trigger from this function
 */
@@ -388,4 +466,5 @@ exports.sendMailAfterJobAdd = sendMailAfterJobAdd;
 exports.sendMailAfterApproveJob = sendMailAfterApproveJob;
 exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;
 exports.sendMailToApplicant = sendMailToApplicant;
+exports.sendMailToIrrelevantApplicant = sendMailToIrrelevantApplicant;
 module.exports.loadSchema = createSchema;

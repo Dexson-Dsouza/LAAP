@@ -1,5 +1,7 @@
 function createSchema(app, mssql, pool2) {
 
+    var mailer = require("./mail.controller.js");
+
     app.post('/api/add-comment-onjob', addCommentOnJob);
 
     app.get('/api/getcommentsforjob', getAllCommentsForJob);
@@ -15,7 +17,8 @@ function createSchema(app, mssql, pool2) {
             request.input('IsDeleted', mssql.Int, req.body.IsDeleted);
             request.execute('sp_AddCommentOnJob').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
-                res.send({ message: "Comment added successfully!", success: true });
+                res.send({ message: "Comment added successfully!", success: true, commentId: data.recordset[0].Id });
+                // mailer.sendMailAfterCommentAddedOnJob(req.body.UserId, req.body.JobId, data.recordset[0].Id);
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);
