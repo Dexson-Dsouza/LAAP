@@ -18,7 +18,6 @@ function createSchema(app, mssql, pool2) {
             request.execute('sp_AddCommentOnJob').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Comment added successfully!", success: true, commentId: data.recordset[0].Id });
-                // mailer.sendMailAfterCommentAddedOnJob(req.body.UserId, req.body.JobId, data.recordset[0].Id);
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

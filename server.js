@@ -15,15 +15,17 @@ var whitelist = [
   "http://192.168.1.55:3000",
   "http://localhost:3200",
   "http://192.168.1.55:3200",
-  "http://203.123.47.142:3200"
+  "http://203.123.47.142:3200",
+  "http://mycareers.mywebready.site",
+  "http://ics.mywebready.site"
 ];
-var PORT = 3300;
+var PORT = 3300 || process.env.PORT;
 
 // default route
 app.get("/", function (req, res) {
   return res.send({ error: true, message: "hello" });
 });
-app.set('view engine', 'jade');
+
 // port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
 app.listen(PORT, function () {
   console.log("Node app is running on port " + PORT);
@@ -97,7 +99,7 @@ function readDirectories() {
 }
 
 var syncWithAd = require('./__ent/datamigrate.controller');
-cron.scheduleJob('0 0 */1 * * *', function () {//run every hour when minute = 1
+cron.scheduleJob('0 0 */3 * * *', function () {//run every hour when minute = 1
   console.log('Cron Jobs Run every 3 hrs');
   console.log(new Date());
   syncWithAd.syncData();

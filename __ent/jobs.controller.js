@@ -310,8 +310,12 @@ function createSchema(app, mssql, pool2) {
           request.input("shift", mssql.Int, req.body.shift);
           if (req.body.salary) {
             request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
+            //null 0 1
+            request.input("salaryVisible", mssql.Int, req.body.salaryVisible);
           }
           request.input('remark', mssql.VarChar(4000), req.body.remark);
+          request.input('Latitude', mssql.VarChar(50), req.body.Latitude);
+          request.input('Longitude', mssql.VarChar(50), req.body.Longitude);
           request
             .execute("sp_AddJob")
             .then(function (data, recordsets, returnValue, affected) {
@@ -439,10 +443,17 @@ function createSchema(app, mssql, pool2) {
           // request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
           request.input("salary", mssql.Int, parseInt(req.body.salary));
           request.input("shift", mssql.Int, req.body.shift);
+          request.input("updateTime", mssql.VarChar(50), new Date().getTime());
+          request.input("updatedBy", mssql.Int,  req.body.updatedBy);
+          request.input("updateNote", mssql.VarChar(1000),  req.body.updateNote);
           if (req.body.salary) {
             request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
+            //null 0 1
+            request.input("salaryVisible", mssql.Int, req.body.salaryVisible);
           }
           request.input('remark', mssql.VarChar(4000), req.body.remark);
+          request.input('Latitude', mssql.VarChar(50), req.body.Latitude);
+          request.input('Longitude', mssql.VarChar(50), req.body.Longitude);
           request
             .execute("sp_UpdateJob")
             .then(function (data, recordsets, returnValue, affected) {
@@ -452,6 +463,7 @@ function createSchema(app, mssql, pool2) {
                 success: true,
                 response: data.recordset
               });
+              mailer.sendMailAfterUpdateJob(req.body.updatedBy,  parseInt(req.body.jobId));
             })
             .catch(function (err) {
               console.log(err);

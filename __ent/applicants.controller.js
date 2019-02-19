@@ -56,6 +56,7 @@ function createSchema(app, mssql, pool2) {
     function changeApplicantStatus(req, res) {
         pool2.then((pool) => {
             var request = pool.request();
+            console.log('=====update status=====');
             console.log(req.body);
             request.input('applicantId', mssql.Int, req.body.applicantId);
             request.input('statusId', mssql.Int, req.body.statusId);
@@ -65,6 +66,10 @@ function createSchema(app, mssql, pool2) {
             request.execute('sp_UpdateApplicantStatus').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: 'Applicant Status updated successfully!', success: true });
+                if (req.body.statusId == 11) {
+                    console.log("applicant status changed to Irrelevant. Sending mail to applicant");
+                    mailer.sendMailToIrrelevantApplicant(req.body.applicantId, req.body.jobId);
+                }
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

@@ -2,8 +2,8 @@ var nodemailer = require("nodemailer");
 var fs = require("fs");
 var handlebars = require("handlebars");
 var async = require("async");
-var ICS_URL = 'http://localhost:4200/';
-var ICS_ADMIN_URL = "http://localhost:4200/login";
+var ICS_URL = 'http://mycareers.mywebready.site/career/';
+var ICS_ADMIN_URL = "http://mycareers.mywebready.site/career-admin/login";
 var transporter = nodemailer.createTransport({
   host: "mail.infinite-usa.com",
   port: 25,
@@ -35,6 +35,203 @@ var readHTMLFile = function (path, callback) {
   });
 };
 
+/*
+**THis function send mail to the approvers that
+**new job is added, pls review and publish it
+*/
+function sendMailAfterJobAdd(postedById, jobId) {
+  console.log("==========Send Mail After Job Add==========");
+  console.log(postedById);
+  console.log(jobId);
+  async.series([
+    function (callback) {
+      getPostedByUserDetails(callback, postedById);
+    },
+    function (callback) {
+      getJobDetails(callback, jobId);
+    },
+    function (callback) {
+      getJobApprovers(callback, postedById);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    var cResult = results[2];
+    var replacements = {
+      recruiter: aResult.DisplayName,
+      jobTitle: bResult.JobTitle,
+      loginLink: ICS_ADMIN_URL,
+      jobCustomTitle: bResult.JobCustomTitle
+    };
+    triggerMail("job-created.html", replacements, cResult.join(","), "Job Approval");
+  });
+};
+
+/*
+**THis function send mail to the approvers that
+**new job is added, pls review and publish it
+*/
+function sendMailAfterUpdateJob(updatedBy, jobId) {
+  console.log("==========Send Mail After Job Add==========");
+  console.log(updatedBy);
+  console.log(jobId);
+  async.series([
+    function (callback) {
+      getPostedByUserDetails(callback, updatedBy);
+    },
+    function (callback) {
+      getJobDetails(callback, jobId);
+    },
+    function (callback) {
+      getJobApprovers(callback, updatedBy);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    var cResult = results[2];
+    var replacements = {
+      recruiter: aResult.DisplayName,
+      jobTitle: bResult.JobTitle,
+      loginLink: ICS_ADMIN_URL,
+      jobCustomTitle: bResult.JobCustomTitle
+    };
+    triggerMail("job-update.html", replacements, cResult.join(","), "Job Updated");
+  });
+};
+
+
+/*
+**THis function send mail to the approvers/recruiter that
+**new job is published.
+*/
+function sendMailAfterApproveJob(jobId) {
+  console.log("==========Send Mail After Approve Job==========");
+  console.log(jobId);
+  async.series([
+    function (callback) {
+      getAllRecruiters(callback);
+    },
+    function (callback) {
+      getJobDetails(callback, jobId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    var replacements = {
+      jobTitle: bResult.JobTitle,
+      jobLink: ICS_URL + bResult.JobCustomTitle + "/" + bResult.jobId
+    };
+    triggerMail("job-published.html", replacements, aResult.join(","), "New Job Published");
+  });
+};
+
+/*
+**THis function send mail to the approvers/recruiter that
+**new new applicant submitted his resume.
+*/
+function sendMailAfterApplicantsApplied(applicantId) {
+  console.log("==========Send Mail After Applicant applied for Job==========");
+  async.series([
+    function (callback) {
+      getAllRecruiters(callback);
+    },
+    function (callback) {
+      getApplicantWithResume(callback, applicantId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+
+    if (typeof (bResult.AppliedForJob) != 'null') {
+      pool2.then(pool => {
+        var request = pool.request();
+        request.input("jobId", mssql.Int, bResult.AppliedForJob);
+        request.execute("sp_GetJobDetailsByJobId").then(function (data) {
+          mssql.close();
+          console.log(data.recordset[0]);
+          sendMailToRecruiters(aResult, bResult, data.recordset[0]);
+        }).catch(function (err) {
+          console.log(err);
+          res.send(err);
+        });
+      });
+    } else {
+      sendMailToRecruiters(aResult, bResult);
+    }
+  });
+};
+
+/*
+**THis function send mail to the applicant
+*/
+function sendMailToApplicant(applicantId, jobId) {
+  async.series([
+    function (callback) {
+      if (typeof (jobId) != "undefined") {
+        getJobDetailsWithRecruiter(callback, jobId);
+      } else {
+        var c;
+        callback(null, c);
+      }
+    },
+    function (callback) {
+      getApplicantDetails(callback, applicantId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    triggerMailToApplicant(aResult, bResult);
+  });
+}
+
+/*
+**THis function send mail to the applicant which
+**are irrelevant with the current vacancies.
+*/
+function sendMailToIrrelevantApplicant(applicantId, jobId) {
+  console.log("Job Id ", jobId );
+  async.series([
+    function (callback) {
+      getApplicantDetails(callback, applicantId)
+    }
+  ], function (err, results) {
+    var applicantDetails = results[0];
+    var tmplPath = "irrelevantjobapplication.html", subject;
+    var replacements = {
+      applicantName: applicantDetails.Name
+    }
+    if (typeof (jobId) != "undefined") {
+      subject = 'Update on your Application Status!';
+    } else {
+      subject = 'Update on your Candidature!'
+    }
+    console.log(applicantDetails.EmailAddress);
+    console.log("Mail sending to the applicant: ", applicantDetails.EmailAddress);
+    console.log("Content: ", replacements);
+    triggerMail(tmplPath, replacements, applicantDetails.EmailAddress, subject);
+  });
+}
+
+/*
+**THis function send mail to the after comment added on job
+*/
+function sendMailAfterCommentAddedOnJob(req, res) {
+  console.log(req.body);
+  var commentId = req.body.commentId;
+  var c = req.body.emails;
+  var emails = c.split(",");
+  var jobTitle = req.body.jobTitle;
+  async.series([
+    function (callback) {
+      getCommentDetails(callback, commentId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    console.log(emails);
+    res.send({ success: true, message: "mail sent" });
+    triggerMailOnCommentAddedOnJob(aResult, emails, jobTitle);
+  });
+}
 
 /*
 **Pass job id anc callback to this function to
@@ -260,161 +457,6 @@ function getCommentDetails(callback, commentId) {
       });
   });
 }
-/*
-**THis function send mail to the approvers that
-**new job is added, pls review and publish it
-*/
-function sendMailAfterJobAdd(postedById, jobId) {
-  console.log("==========Send Mail After Job Add==========");
-  console.log(postedById);
-  console.log(jobId);
-  async.series([
-    function (callback) {
-      getPostedByUserDetails(callback, postedById);
-    },
-    function (callback) {
-      getJobDetails(callback, jobId);
-    },
-    function (callback) {
-      getJobApprovers(callback, postedById);
-    }
-  ], function (err, results) {
-    var aResult = results[0];
-    var bResult = results[1];
-    var cResult = results[2];
-    var replacements = {
-      recruiter: aResult.DisplayName,
-      jobTitle: bResult.JobTitle,
-      loginLink: ICS_ADMIN_URL
-    };
-    triggerMail("job-created.html", replacements, cResult.join(","), "Job Approval");
-  });
-};
-
-/*
-**THis function send mail to the approvers/recruiter that
-**new job is published.
-*/
-function sendMailAfterApproveJob(jobId) {
-  console.log("==========Send Mail After Approve Job==========");
-  console.log(jobId);
-  async.series([
-    function (callback) {
-      getAllRecruiters(callback);
-    },
-    function (callback) {
-      getJobDetails(callback, jobId);
-    }
-  ], function (err, results) {
-    var aResult = results[0];
-    var bResult = results[1];
-    var replacements = {
-      jobTitle: bResult.JobTitle,
-      jobLink: ICS_URL + bResult.JobCustomTitle + "/" + bResult.jobId
-    };
-    triggerMail("job-published.html", replacements, aResult.join(","), "New Job Published");
-  });
-};
-
-/*
-**THis function send mail to the approvers/recruiter that
-**new new applicant submitted his resume.
-*/
-function sendMailAfterApplicantsApplied(applicantId) {
-  console.log("==========Send Mail After Applicant applied for Job==========");
-  async.series([
-    function (callback) {
-      getAllRecruiters(callback);
-    },
-    function (callback) {
-      getApplicantWithResume(callback, applicantId);
-    }
-  ], function (err, results) {
-    var aResult = results[0];
-    var bResult = results[1];
-
-    if (typeof (bResult.AppliedForJob) != 'null') {
-      pool2.then(pool => {
-        var request = pool.request();
-        request.input("jobId", mssql.Int, bResult.AppliedForJob);
-        request.execute("sp_GetJobDetailsByJobId").then(function (data) {
-          mssql.close();
-          console.log(data.recordset[0]);
-          sendMailToRecruiters(aResult, bResult, data.recordset[0]);
-        }).catch(function (err) {
-          console.log(err);
-          res.send(err);
-        });
-      });
-    } else {
-      sendMailToRecruiters(aResult, bResult);
-    }
-  });
-};
-
-/*
-**THis function send mail to the applicant
-*/
-function sendMailToApplicant(applicantId, jobId) {
-  async.series([
-    function (callback) {
-      if (typeof (jobId) != "undefined") {
-        getJobDetailsWithRecruiter(callback, jobId);
-      } else {
-        var c;
-        callback(null, c);
-      }
-    },
-    function (callback) {
-      getApplicantDetails(callback, applicantId);
-    }
-  ], function (err, results) {
-    var aResult = results[0];
-    var bResult = results[1];
-    triggerMailToApplicant(aResult, bResult);
-  });
-}
-
-/*
-**THis function send mail to the applicant which
-**are irrelevant with the current vacancies.
-*/
-function sendMailToIrrelevantApplicant(applicantDetails, irrelevantType) {
-  var tmplPath = "irrelevantjobapplication.html", subject;
-  var replacements = {
-    applicantName: applicantDetails.Name
-  }
-  if (irrelevantType == 1) {
-    subject = 'Update on your Application Status!';
-  } else {
-    subject = 'Update on your Candidature!'
-  }
-  console.log(applicantDetails.EmailAddress);
-  console.log("Mail sending to the applicant: ", applicantDetails.EmailAddress);
-  console.log("Content: ", replacements);
-  triggerMail(tmplPath, replacements, applicantDetails.EmailAddress, subject);
-}
-
-/*
-**THis function send mail to the after comment added on job
-*/
-function sendMailAfterCommentAddedOnJob(req, res) {
-  console.log(req.body);
-  var commentId = req.body.commentId;
-  var c = req.body.emails;
-  var emails = c.split(",");
-  var jobTitle = req.body.jobTitle;
-  async.series([
-    function (callback) {
-      getCommentDetails(callback, commentId);
-    }
-  ], function (err, results) {
-    var aResult = results[0];
-    console.log(emails);
-    res.send({ success: true, message: "mail sent" });
-    triggerMailOnCommentAddedOnJob(aResult, emails, jobTitle);
-  });
-}
 
 /*
 **THis function trigger mail to the users/job authors
@@ -429,6 +471,7 @@ function triggerMailOnCommentAddedOnJob(commentDetails, emails, jobTitle) {
   };
   triggerMail(tmplPath, replacements, emails.join(","), "New Comment added on " + jobTitle);
 }
+
 /*
 **This is a single function to trigger a mail.
 **all mails are trigger from this function
@@ -448,7 +491,6 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
     if (attachments) {
       mailOptions.attachments = attachments;
     }
-    console.log(mailOptions);
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         return console.log(error);
@@ -467,4 +509,5 @@ exports.sendMailAfterApproveJob = sendMailAfterApproveJob;
 exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;
 exports.sendMailToApplicant = sendMailToApplicant;
 exports.sendMailToIrrelevantApplicant = sendMailToIrrelevantApplicant;
+exports.sendMailAfterUpdateJob = sendMailAfterUpdateJob;
 module.exports.loadSchema = createSchema;
