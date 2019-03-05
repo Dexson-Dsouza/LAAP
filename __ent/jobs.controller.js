@@ -11,6 +11,8 @@ function createSchema(app, mssql, pool2) {
 
   app.get("/api/searchjobs", searchJobsByAllParams);
 
+  app.get("/api/searchlatestjobs", searchLatestJobsByAllParams);
+
   app.get("/api/getcategories", getAllJobCategories);
 
   app.get("/api/getJobsForRecruiter", getJobForRecruiters);
@@ -167,6 +169,34 @@ function createSchema(app, mssql, pool2) {
       request.input("jobStatus", mssql.Int, req.query.jobStatus);
       request
         .execute("sp_SearchJobsByAllSearchBox")
+        .then(function (data, recordsets, returnValue, affected) {
+          mssql.close();
+          res.send({
+            message: "Data retrieved successfully!",
+            success: true,
+            response: data.recordset
+          });
+        })
+        .catch(function (err) {
+          console.log(err);
+          res.send(err);
+        });
+    });
+  }
+
+  function searchLatestJobsByAllParams(req, res){
+    pool2.then(pool => {
+      var request = pool.request();
+      console.log(req.query);
+      request.input("page", mssql.Int, req.query.page);
+      request.input("limit", mssql.Int, req.query.limit);
+      request.input("loc", mssql.Int, req.query.loc);
+      request.input("str", mssql.VarChar(100), req.query.str);
+      request.input("category", mssql.Int, req.query.category);
+      request.input("categoryStr", mssql.VarChar(100), req.query.categoryStr);
+      request.input("jobStatus", mssql.Int, req.query.jobStatus);
+      request
+        .execute("sp_SearchLatestJobsByAllSearchBox")
         .then(function (data, recordsets, returnValue, affected) {
           mssql.close();
           res.send({

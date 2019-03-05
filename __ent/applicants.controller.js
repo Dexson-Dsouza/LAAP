@@ -37,18 +37,75 @@ function createSchema(app, mssql, pool2) {
             var request = pool.request();
             console.log(req.body);
             request.input('EmailAddress', mssql.VarChar(500), req.body.EmailAddress);
+            request.input('AppliedForJob', mssql.Int, req.body.AppliedForJob);
+            request.execute('sp_GetApplicantAppliedCount').then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                console.log("=============");
+                console.log(data);
+                console.log("=============");
+                if (data.recordset.length) {
+                    if (data.recordset[0].TotalAppliedForJob >= 1) {
+                        console.log("//send error response that already applied");
+                        res.send({ message: "Applicants already applied for this job", code: 40008, success: false, response: data.recordset[0] });
+                    } else if (data.recordset[0].TotalApplied >= 8) {
+                        console.log("//send error response maximum applied");
+                        res.send({ message: "Applicants reached maximum attempts", code: 40009, success: false, response: data.recordset[0] });
+                    } else {
+                        console.log("New Applicant");
+                        addApplicantToDatabase(req, res);
+                    }
+                } else {
+                    console.log("New Applicant");
+                    addApplicantToDatabase(req, res);
+                }
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+        });
+    }
+
+    function addApplicantToDatabase(req, res) {
+        pool2.then((pool) => {
+            var request = pool.request();
+            console.log(req.body);
+            request.input('EmailAddress', mssql.VarChar(500), req.body.EmailAddress);
             request.input('ApplicantApplyDate', mssql.VarChar(500), req.body.ApplicantApplyDate);
             request.input('ResumeFileId', mssql.Int, req.body.ResumeFileId);
-            request.input('AppliedForJob', mssql.Int, req.body.AppliedForJob);
+            if(typeof(req.body.AppliedForJob)!="undefined"){
+                request.input('AppliedForJob', mssql.Int, req.body.AppliedForJob);
+            }else{
+                request.input('AppliedForJob', mssql.Int, 0);
+            }            
             request.input('Name', mssql.VarChar(500), req.body.Name);
             request.input('ApplicantStatus', mssql.Int, req.body.ApplicantStatus);
             request.execute('sp_AddApplicant').then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 res.send({ message: "Applicants added successfully!", success: true, response: data.recordset[0] });
                 mailer.sendMailToApplicant(data.recordset[0].Id, req.body.AppliedForJob);
+                if (req.body.AppliedForJob) {
+                    getCountsOfApplicantsOnJob(req.body.AppliedForJob);
+                }
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);
+            });
+        });
+    }
+
+    function getCountsOfApplicantsOnJob(jobId) {
+        console.log("Checking How many applicants applied for Job.");
+        pool2.then((pool) => {
+            var request = pool.request();
+            request.query('SELECT COUNT(*) AS TotalApplicantsOnJob FROM Applicants WHERE AppliedForJob = ' + jobId).then(function (data, recordsets, returnValue, affected) {
+                mssql.close();
+                console.log("Total applicants applied for this job is : ", data.recordset[0].TotalApplicantsOnJob);
+                if (data.recordset[0].TotalApplicantsOnJob && data.recordset[0].TotalApplicantsOnJob == 80) {
+                    console.log("Total applicants applied for this job is : ", data.recordset[0].TotalApplicantsOnJob);
+                    mailer.informRecruiterOnApplicantCountOnJob(jobId, data.recordset[0].TotalApplicantsOnJob)
+                }
+            }).catch(function (err) {
+                console.log(err);
             });
         });
     }

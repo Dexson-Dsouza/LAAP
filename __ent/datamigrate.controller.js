@@ -22,7 +22,7 @@ function createSchema(app, mssql, pool2) {
     app.get('/api/addusersfromadtosql', addUserFromADToSQL);
 }
 
-function getADUsers(callback) {
+function getADUsers(callback, res) {
     var query = {
         filter: '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(givenName=*))',
         attributes: ['mail',
@@ -43,23 +43,28 @@ function getADUsers(callback) {
             'sn',
             'dn']
     }
-    adConfig.username = "sbhoybar@ics.global";
-    adConfig.password = "maratha@456";
+    adConfig.username = "training@ics.global";
+    adConfig.password = "Infinite234$";
     var ad = new ActiveDirectory(adConfig);
     ad.findUsers(query, true, function (err, users) {
         if (err) {
             console.log('ERROR: ' + JSON.stringify(err));
-            // res.send({ message: err, success: false });
-            // return callback({ message: err, success: false, code: 40003 });
+            try {
+                if (res) {
+                    res.send({ message: err, success: false });
+                }
+            } catch (err) {
+                console.log("AD SYNC FAILED");
+            }
         }
         if ((!users) || (users.length == 0)) {
             console.log('No users found.');
-            // res.send({ message: 'No users found.', success: false });
-            // return callback({ message: 'No users found.', success: false, code: 40004 });
+            isErr = true;
         }
         else {
             callback(null, users);
         }
+
     });
     // fs.readFile('static/user_data.json', 'utf8', function (err, data) {
     //     if (err) throw err;
@@ -89,12 +94,17 @@ function syncData(req, res) {
     console.log("===========  +++++++++++++++++++ ===========");
     async.waterfall([
         function (callback) {
-            getADUsers(callback);
+            getADUsers(callback, res);
         },
         function (aResult, callback) {
             getSQLUsers(callback, aResult);
         }
     ], function (err, aResult, bResult) {
+        if (typeof (aResult) == "undefined") {
+            console.log(".......AD SYNC FAILED......SYNC AGAIN.........");
+            console.log(aResult);
+            syncData(req, res);
+        }
         //variable a for AD Data
         //variable b for SQL data
         var a = [];
@@ -147,10 +157,10 @@ function syncData(req, res) {
         if (res) {
             res.send({ message: "Data sync completed", success: true });
         }
-        var __z={
-            Message:"Sync Operation Performed successfully by system.",
-            Date:new Date().getTime(),
-            Status:1
+        var __z = {
+            Message: "Sync Operation Performed successfully by system.",
+            Date: new Date().getTime(),
+            Status: 1
         }
         addAdSyncData(__z);
     });
@@ -221,8 +231,8 @@ function comparer(otherArray) {
             return other.UserName == current.UserName && other.Designation == current.Designation
                 && other.Department == current.Department && other.DisplayName == current.DisplayName
                 && other.Mobile == current.Mobile && other.TelephoneNumber == current.TelephoneNumber
-                && other.IsDeleted == current.IsDeleted &&  other.City == current.City
-                && other.State == current.State &&  other.Country == current.Country
+                && other.IsDeleted == current.IsDeleted && other.City == current.City
+                && other.State == current.State && other.Country == current.Country
         }).length == 0;
     }
 }
@@ -262,7 +272,7 @@ function addUserFromADToSQL(req, res) {
     })
 }
 
-function addAdSyncData(__o){
+function addAdSyncData(__o) {
     thispool2.then(pool => {
         var request = pool.request();
         request.input("Message", thismssql.VarChar(500), __o.Message);
@@ -270,8 +280,8 @@ function addAdSyncData(__o){
         request.input("RunBy", thismssql.Int, __o.RunBy);
         request.input("Status", thismssql.Int, __o.Status);
         request.execute("sp_AddAdSyncData").then(function (data, recordsets, returnValue, affected) {
-            thismssql.close();        
-            console.log("Sync operation performed!!")    
+            thismssql.close();
+            console.log("Sync operation performed!!")
         }).catch(function (err) {
             console.log(err);
         });

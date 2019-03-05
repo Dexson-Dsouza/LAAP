@@ -2,8 +2,8 @@ var nodemailer = require("nodemailer");
 var fs = require("fs");
 var handlebars = require("handlebars");
 var async = require("async");
-var ICS_URL = 'http://mycareers.mywebready.site/career/';
-var ICS_ADMIN_URL = "http://mycareers.mywebready.site/career-admin/login";
+var ICS_URL = 'http://careers.infinite-usa.com';
+var ICS_ADMIN_URL = "http://admin.infinite-usa.com";
 var transporter = nodemailer.createTransport({
   host: "mail.infinite-usa.com",
   port: 25,
@@ -60,7 +60,7 @@ function sendMailAfterJobAdd(postedById, jobId) {
     var replacements = {
       recruiter: aResult.DisplayName,
       jobTitle: bResult.JobTitle,
-      loginLink: ICS_ADMIN_URL,
+      loginLink: ICS_ADMIN_URL + "/dashboard/approve-job",
       jobCustomTitle: bResult.JobCustomTitle
     };
     triggerMail("job-created.html", replacements, cResult.join(","), "Job Approval");
@@ -92,7 +92,7 @@ function sendMailAfterUpdateJob(updatedBy, jobId) {
     var replacements = {
       recruiter: aResult.DisplayName,
       jobTitle: bResult.JobTitle,
-      loginLink: ICS_ADMIN_URL,
+      loginLink: ICS_ADMIN_URL+"/dashboard/jobs",
       jobCustomTitle: bResult.JobCustomTitle
     };
     triggerMail("job-update.html", replacements, cResult.join(","), "Job Updated");
@@ -119,7 +119,7 @@ function sendMailAfterApproveJob(jobId) {
     var bResult = results[1];
     var replacements = {
       jobTitle: bResult.JobTitle,
-      jobLink: ICS_URL + bResult.JobCustomTitle + "/" + bResult.jobId
+      jobLink: ICS_URL + "/job/" + bResult.JobCustomTitle + "/" + bResult.jobId
     };
     triggerMail("job-published.html", replacements, aResult.join(","), "New Job Published");
   });
@@ -133,7 +133,7 @@ function sendMailAfterApplicantsApplied(applicantId) {
   console.log("==========Send Mail After Applicant applied for Job==========");
   async.series([
     function (callback) {
-      getAllRecruiters(callback);
+      getAllRecruitersAndReportingPersons(callback);
     },
     function (callback) {
       getApplicantWithResume(callback, applicantId);
@@ -189,7 +189,7 @@ function sendMailToApplicant(applicantId, jobId) {
 **are irrelevant with the current vacancies.
 */
 function sendMailToIrrelevantApplicant(applicantId, jobId) {
-  console.log("Job Id ", jobId );
+  console.log("Job Id ", jobId);
   async.series([
     function (callback) {
       getApplicantDetails(callback, applicantId)
@@ -233,6 +233,33 @@ function sendMailAfterCommentAddedOnJob(req, res) {
   });
 }
 
+/*
+**THis function send mail to the approvers/recruiter that
+**new new applicant submitted his resume.
+*/
+function informRecruiterOnApplicantCountOnJob(jobId, applicantCount) {
+  console.log("==========Send Mail After Applicants Count Limit Reached On Job==========");
+  async.series([
+    function (callback) {
+      getAllRecruiters(callback);
+    },
+    function (callback) {
+      getJobDetails(callback, jobId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+
+    var tmplPath = "applicantcountreached.html", subject;
+    var replacements = {
+      jobTitle: bResult.JobTitle,
+      jobCustomTitle: bResult.JobCustomTitle,
+      applicantCount: applicantCount
+    }
+    subject = 'High applications on ' + bResult.JobTitle + "!";
+    triggerMail(tmplPath, replacements, aResult.join(","), subject);
+  });
+};
 /*
 **Pass job id anc callback to this function to
 **GetJobDetails by job id
@@ -325,6 +352,27 @@ function getAllRecruiters(callback) {
   });
 }
 
+function getAllRecruitersAndReportingPersons(callback) {
+  pool2.then((pool) => {
+    var request = pool.request();
+    request.execute('sp_GetRecruitersAndReportingPersons').then(function (data, recordsets, returnValue, affected) {
+      mssql.close();
+      var __o = data.recordset;
+      var emailId = [];
+      if (__o.length) {
+        for (var i = 0; i < __o.length; i++) {
+          emailId.push(__o[i].EmailAddress);
+        }
+      }
+      console.log(emailId);
+      callback(null, emailId)
+    }).catch(function (err) {
+      console.log(err);
+      callback(err)
+    });
+  });
+}
+
 /*
 **THis function returns the details of
 **the applicant
@@ -339,7 +387,6 @@ function getApplicantDetails(callback, applicantId) {
     })
       .catch(function (err) {
         console.log(err);
-        res.send(err);
       });
   });
 }
@@ -510,4 +557,5 @@ exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;
 exports.sendMailToApplicant = sendMailToApplicant;
 exports.sendMailToIrrelevantApplicant = sendMailToIrrelevantApplicant;
 exports.sendMailAfterUpdateJob = sendMailAfterUpdateJob;
+exports.informRecruiterOnApplicantCountOnJob = informRecruiterOnApplicantCountOnJob;
 module.exports.loadSchema = createSchema;

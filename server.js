@@ -17,13 +17,17 @@ var whitelist = [
   "http://192.168.1.55:3200",
   "http://203.123.47.142:3200",
   "http://mycareers.mywebready.site",
-  "http://ics.mywebready.site"
+  "http://ics.mywebready.site",
+  "https://infinite-staff.com",
+  "https://infinite-usa.com",
+  "http://careers.infinite-usa.com",
+  "http://admin.infinite-usa.com"
 ];
-var PORT = 3300 || process.env.PORT;
+var PORT = process.env.PORT;
 
 // default route
 app.get("/", function (req, res) {
-  return res.send({ error: true, message: "hello" });
+  return res.send({ error: false, message: "Working.." });
 });
 
 // port must be set to 8080 because incoming http requests are routed from port 80 to port 8080
@@ -63,9 +67,9 @@ function connectToDatabase() {
   var config = {
     user: "sa",
     password: "Infinite123#",
-    server: "INMDCD0212",
+    server: "USCDRS0001",
     port: 1433,
-    database: "Infinite_Centralized_DB_Test",
+    database: "Infinite_Job_Portal",
     options: {
       encrypt: false
     }
@@ -99,7 +103,7 @@ function readDirectories() {
 }
 
 var syncWithAd = require('./__ent/datamigrate.controller');
-cron.scheduleJob('0 0 */3 * * *', function () {//run every hour when minute = 1
+cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
   console.log('Cron Jobs Run every 3 hrs');
   console.log(new Date());
   syncWithAd.syncData();

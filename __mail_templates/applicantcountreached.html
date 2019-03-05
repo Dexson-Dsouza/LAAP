@@ -213,8 +213,6 @@
 <body width="100%" style="margin: 0; mso-line-height-rule: exactly;">
     <center style="width: 100%; background: #fff; text-align: left;margin: 25px 0;">
 
-
-
         <!-- Email Header : BEGIN -->
         <table role="presentation" cellspacing="0" cellpadding="10" border="0" align="center" width="600" style="margin: auto; border-left:1px solid #304265; border-right:1px solid #304265;border-top:1px solid #304265;"
             class="email-container">
@@ -227,41 +225,44 @@
         <!-- Email Header : END -->
 
         <!-- Email Body : BEGIN -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600" style="margin: auto; border:1px solid #dddddd;"
+        <table role="presentation" cellspacing="0" align="center" cellpadding="0" border="0" width="600" style="margin: auto; border:1px solid #eaeaea;"
             class="email-container">
-
             <!-- 1 Column Text + Button : BEGIN -->
             <tr>
-                <td bgcolor="#ffffff" style="padding: 20px 40px 10px;">
-                    <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 125%; color: #333333; font-weight: normal;"><strong>Hi Approvers,</strong></p>
+                <td colspan="2" bgcolor="#ffffff" style="padding: 20px 40px 0px; mso-line-height: 150%;">
+                    <p style="font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 140%; color: #555555;"><strong>Hi Team,</strong></p>
                 </td>
             </tr>
             <tr>
-                <td bgcolor="#ffffff" style="padding: 0 40px 20px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 140%; color: #555555;">
-                    <p style="margin: 0;"><strong>"{{jobTitle}} </strong> <strong>({{jobCustomTitle}})" </strong> has been updated by <strong>{{recruiter}}.</strong></p>
+                <td colspan="2" bgcolor="#ffffff" style="padding: 0 40px 20px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 140%; color: #555555; mso-line-height: 150%;">
+                    <p style="margin: 0;line-height: 22px"> Job with the title <strong>"{{jobTitle}} </strong> <strong>({{jobCustomTitle}})" </strong> has received <strong>{{applicantCount}} </strong>applications so far. Please check the applicant list.
+                    </p>
                 </td>
             </tr>
             <tr>
-                <td bgcolor="#ffffff" style="padding: 0 40px 30px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-                     <a href="{{loginLink}}" style="margin: 0;color: #304265;font-weight: 600;">
-                    Login to view</a>
+                <td bgcolor="#ffffff" colspan="2" style="padding:5px 40px 25px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 140%; color: #555555; mso-line-height: 150%;">
+                    <p style="margin: 0;"><strong>Thank you,</strong></p>
+                    <p style="font-size: 13px;margin: 0;">
+                    	Infinite Computing Systems Pvt. Ltd.<br>
+                    	425 2nd St. SE,	Suite 600, <br>Cedar Rapids, IA 52401</p>
                 </td>
             </tr>
 
+            <!-- 2 Even Columns : BEGIN -->
             <tr>
-                <td valign="top" style="padding: 7px 10px;background:#f3f3f3;">
+                <td colspan="2" valign="top" style="padding: 7px 10px;background:#f3f3f3;">
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                         <tr>
                             <!-- Column : BEGIN -->
-                            <td align="left" style="padding: 2px;color:#5d5d5d; font-family: Arial, Helvetica, sans-serif;font-size: 11px;">
+                      		<td align="left" style="padding: 2px;color:#5d5d5d; font-family: Arial, Helvetica, sans-serif;font-size: 11px;">
                                         Copyright © 2019 - Infinite Computing Systems Pvt. Ltd. | All Rights
-                                        Reserved.   
+                                        Reserved.
                                     </td>
                              <td align="right" style="font-family: Arial, Helvetica, sans-serif; line-height: 100%; text-align: right;width:100px; mso-line-height: 150%;">                  
-                                <a href="https://www.facebook.com/infinitecomputingsystems/"><img src="http://infinite-usa.com/wp-content/uploads/2018/01/facebook-icon.png" /></a>
-                                <a href="https://twitter.com/infinitecs97"><img src="http://infinite-usa.com/wp-content/uploads/2018/01/twitter-icon.png" /></a>
-                                <a href="https://www.linkedin.com/company/infinitecomputingsystems/"> <img src="http://infinite-usa.com/wp-content/uploads/2018/01/linkedin-icon.png" /></a>
-                            </td>
+			                    <a href="https://www.facebook.com/infinitecomputingsystems/"><img src="http://infinite-usa.com/wp-content/uploads/2018/01/facebook-icon.png" /></a>
+			                    <a href="https://twitter.com/infinitecs97"><img src="http://infinite-usa.com/wp-content/uploads/2018/01/twitter-icon.png" /></a>
+			                    <a href="https://www.linkedin.com/company/infinitecomputingsystems/"> <img src="http://infinite-usa.com/wp-content/uploads/2018/01/linkedin-icon.png" /></a>
+			                </td>
                             <!-- Column : END -->
                             <!-- Column : BEGIN -->
                             <!-- Column : END -->
@@ -269,12 +270,9 @@
                     </table>
                 </td>
             </tr>
-
+            <!-- 2 Even Columns : END --> 
         </table>
         <!-- Email Body : END -->
-
-
-
 
     </center>
 </body>
