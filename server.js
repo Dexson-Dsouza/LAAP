@@ -23,7 +23,7 @@ var whitelist = [
   "http://careers.infinite-usa.com",
   "http://admin.infinite-usa.com"
 ];
-var PORT = process.env.PORT;
+var PORT = 3300 | process.env.PORT;
 
 // default route
 app.get("/", function (req, res) {
@@ -67,9 +67,9 @@ function connectToDatabase() {
   var config = {
     user: "sa",
     password: "Infinite123#",
-    server: "USCDRS0001",
+    server: "INMDCD0212",
     port: 1433,
-    database: "Infinite_Job_Portal",
+    database: "Infinite_Centralized_DB_Test",
     options: {
       encrypt: false
     }

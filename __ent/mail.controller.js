@@ -2,6 +2,7 @@ var nodemailer = require("nodemailer");
 var fs = require("fs");
 var handlebars = require("handlebars");
 var async = require("async");
+var jwtToken = require("./jwt.controller");
 var ICS_URL = 'http://careers.infinite-usa.com';
 var ICS_ADMIN_URL = "http://admin.infinite-usa.com";
 var transporter = nodemailer.createTransport({
@@ -92,7 +93,7 @@ function sendMailAfterUpdateJob(updatedBy, jobId) {
     var replacements = {
       recruiter: aResult.DisplayName,
       jobTitle: bResult.JobTitle,
-      loginLink: ICS_ADMIN_URL+"/dashboard/jobs",
+      loginLink: ICS_ADMIN_URL + "/dashboard/jobs",
       jobCustomTitle: bResult.JobCustomTitle
     };
     triggerMail("job-update.html", replacements, cResult.join(","), "Job Updated");
@@ -216,20 +217,28 @@ function sendMailToIrrelevantApplicant(applicantId, jobId) {
 **THis function send mail to the after comment added on job
 */
 function sendMailAfterCommentAddedOnJob(req, res) {
-  console.log(req.body);
-  var commentId = req.body.commentId;
-  var c = req.body.emails;
-  var emails = c.split(",");
-  var jobTitle = req.body.jobTitle;
-  async.series([
-    function (callback) {
-      getCommentDetails(callback, commentId);
+  jwtToken.verifyRequest(req, res, decodedToken => {
+    console.log("valid token");
+    if (decodedToken.email) {
+      console.log(req.body);
+      var commentId = req.body.commentId;
+      var c = req.body.emails;
+      var emails = c.split(",");
+      var jobTitle = req.body.jobTitle;
+      async.series([
+        function (callback) {
+          getCommentDetails(callback, commentId);
+        }
+      ], function (err, results) {
+        var aResult = results[0];
+        console.log(emails);
+        res.send({ success: true, message: "mail sent" });
+        triggerMailOnCommentAddedOnJob(aResult, emails, jobTitle);
+      });
+    } else {
+      res.status("401");
+      res.send(invalidRequestError);
     }
-  ], function (err, results) {
-    var aResult = results[0];
-    console.log(emails);
-    res.send({ success: true, message: "mail sent" });
-    triggerMailOnCommentAddedOnJob(aResult, emails, jobTitle);
   });
 }
 

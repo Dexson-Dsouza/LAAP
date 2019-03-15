@@ -1,5 +1,6 @@
 var thisapp, thismssql, thispool2;
 var ActiveDirectory = require('activedirectory');
+var jwtToken = require("./jwt.controller");
 var adConfig = {
     url: 'ldap://ics.global',
     baseDN: 'dc=ics,dc=global'
@@ -17,9 +18,21 @@ function createSchema(app, mssql, pool2) {
 
     app.get('/api/getsqluser', getSQLUsers);
 
-    app.get('/api/syncdata', syncData);
+    app.get('/api/syncdata', syncDataFromWeb);
 
     app.get('/api/addusersfromadtosql', addUserFromADToSQL);
+}
+
+function syncDataFromWeb(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+        console.log("===Sync Data valid token===");
+        if (decodedToken.email) {
+            syncData(req, res);
+        } else {
+            res.status("401");
+            res.send(invalidRequestError);
+        }
+    });
 }
 
 function getADUsers(callback, res) {

@@ -184,7 +184,7 @@ function createSchema(app, mssql, pool2) {
     });
   }
 
-  function searchLatestJobsByAllParams(req, res){
+  function searchLatestJobsByAllParams(req, res) {
     pool2.then(pool => {
       var request = pool.request();
       console.log(req.query);
@@ -474,8 +474,8 @@ function createSchema(app, mssql, pool2) {
           request.input("salary", mssql.Int, parseInt(req.body.salary));
           request.input("shift", mssql.Int, req.body.shift);
           request.input("updateTime", mssql.VarChar(50), new Date().getTime());
-          request.input("updatedBy", mssql.Int,  req.body.updatedBy);
-          request.input("updateNote", mssql.VarChar(1000),  req.body.updateNote);
+          request.input("updatedBy", mssql.Int, req.body.updatedBy);
+          request.input("updateNote", mssql.VarChar(1000), req.body.updateNote);
           if (req.body.salary) {
             request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
             //null 0 1
@@ -493,7 +493,7 @@ function createSchema(app, mssql, pool2) {
                 success: true,
                 response: data.recordset
               });
-              mailer.sendMailAfterUpdateJob(req.body.updatedBy,  parseInt(req.body.jobId));
+              mailer.sendMailAfterUpdateJob(req.body.updatedBy, parseInt(req.body.jobId));
             })
             .catch(function (err) {
               console.log(err);
@@ -528,44 +528,60 @@ function createSchema(app, mssql, pool2) {
   }
 
   function updateJobStatus(req, res) {
-    pool2.then(pool => {
-      var request = pool.request();
-      console.log(req.body);
-      var status = req.body.status;
-      var jobId = req.body.jobId;
-      request
-        .query("UPDATE Jobs SET JobStatus=" + status + " WHERE Id=" + jobId)
-        .then(function (data, recordsets, returnValue, affected) {
-          mssql.close();
-          res.send({
-            message: "Job Status updated successfully!",
-            success: true
-          });
-          if (status == 1) {
-            mailer.sendMailAfterApproveJob(jobId);
-          }
-        })
-        .catch(function (err) {
-          console.log(err);
-          res.send(err);
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.body);
+          var status = req.body.status;
+          var jobId = req.body.jobId;
+          request
+            .query("UPDATE Jobs SET JobStatus=" + status + " WHERE Id=" + jobId)
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              res.send({
+                message: "Job Status updated successfully!",
+                success: true
+              });
+              if (status == 1) {
+                mailer.sendMailAfterApproveJob(jobId);
+              }
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
         });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
     });
   }
 
   function addCategory(req, res) {
-    pool2.then((pool) => {
-      var request = pool.request();
-      console.log(req.body);
-      request.input('category', mssql.VarChar(1000), parseInt(req.body.category));
-      var cat = req.body.category;
-      var catNicename = cat.replace(/\s+/g, '-').toLowerCase();
-      request.query("INSERT INTO JobCategory(JobCategoryNicename,JobCategory) VALUES ('" + catNicename + "','" + cat + "')").then(function (data, recordsets, returnValue, affected) {
-        mssql.close();
-        res.send({ message: "Category added successfully!", success: true, response: data.recordset });
-      }).catch(function (err) {
-        console.log(err);
-        res.send(err);
-      });
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then((pool) => {
+          var request = pool.request();
+          console.log(req.body);
+          request.input('category', mssql.VarChar(1000), parseInt(req.body.category));
+          var cat = req.body.category;
+          var catNicename = cat.replace(/\s+/g, '-').toLowerCase();
+          request.query("INSERT INTO JobCategory(JobCategoryNicename,JobCategory) VALUES ('" + catNicename + "','" + cat + "')").then(function (data, recordsets, returnValue, affected) {
+            mssql.close();
+            res.send({ message: "Category added successfully!", success: true, response: data.recordset });
+          }).catch(function (err) {
+            console.log(err);
+            res.send(err);
+          });
+        });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
     });
   }
 
@@ -596,24 +612,32 @@ function createSchema(app, mssql, pool2) {
   }
 
   function addLocation(req, res) {
-    pool2.then((pool) => {
-      var request = pool.request();
-      console.log(req.body);
-      request.input('StreetAddress', mssql.VarChar(500), req.body.StreetAddress);
-      request.input('City', mssql.VarChar(50), req.body.City);
-      request.input('State', mssql.VarChar(50), req.body.State);
-      request.input('Country', mssql.VarChar(50), req.body.Country);
-      request.input('Zipcode', mssql.VarChar(50), req.body.Zipcode);
-      request.input('Lat', mssql.VarChar(500), req.body.Lat);
-      request.input('Long', mssql.VarChar(500), req.body.Long);
-      request.execute('sp_AddLocation').then(function (data, recordsets, returnValue, affected) {
-        mssql.close();
-        console.log(data);
-        res.send({ message: "Location added successfully!", success: true});
-      }).catch(function (err) {
-        console.log(err);
-        res.send(err);
-      });
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then((pool) => {
+          var request = pool.request();
+          console.log(req.body);
+          request.input('StreetAddress', mssql.VarChar(500), req.body.StreetAddress);
+          request.input('City', mssql.VarChar(50), req.body.City);
+          request.input('State', mssql.VarChar(50), req.body.State);
+          request.input('Country', mssql.VarChar(50), req.body.Country);
+          request.input('Zipcode', mssql.VarChar(50), req.body.Zipcode);
+          request.input('Lat', mssql.VarChar(500), req.body.Lat);
+          request.input('Long', mssql.VarChar(500), req.body.Long);
+          request.execute('sp_AddLocation').then(function (data, recordsets, returnValue, affected) {
+            mssql.close();
+            console.log(data);
+            res.send({ message: "Location added successfully!", success: true });
+          }).catch(function (err) {
+            console.log(err);
+            res.send(err);
+          });
+        });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
     });
   }
 }

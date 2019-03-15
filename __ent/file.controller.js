@@ -1,6 +1,7 @@
 function createSchema(app, mssql, pool2, fs) {
     let upload = require('./multer.config.js');
     var mailer = require("./mail.controller.js");
+    var jwtToken = require("./jwt.controller");
 
     app.post('/api/file/upload/:applicantId', upload.single("file"), uploadFile);
 
@@ -61,11 +62,11 @@ function createSchema(app, mssql, pool2, fs) {
         if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
         return d.toString();
     }
-    
+
     function getDate() {
         return new Date().getUTCFullYear() + "-" + twoDigits(1 + new Date().getUTCMonth()) + "-" + twoDigits(new Date().getUTCDate()) + " " + new Date().getHours() + ":" + new Date().getMinutes() + ":" + new Date().getSeconds();
     }
-    
+
     function updateResumeOfApplicant(res, resumeId, applicantId) {
         console.log("UpdateResumeOfApplicant called");
         pool2.then((pool) => {
@@ -93,9 +94,17 @@ function createSchema(app, mssql, pool2, fs) {
     }
 
     function downloadFile(req, res) {
-        console.log(req.query);
-        let filename = req.query.filename;
-        res.download('./uploads/resumes/' + req.query.applicantId + "/" + filename);
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("==File Download valid token==");
+            if (decodedToken.email) {
+                console.log(req.query);
+                let filename = req.query.filename;
+                res.download('./uploads/resumes/' + req.query.applicantId + "/" + filename);
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
     }
 }
 module.exports.loadSchema = createSchema;
