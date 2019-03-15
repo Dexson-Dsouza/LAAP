@@ -92,7 +92,7 @@ function readDirectories() {
   const schemaFolder = "./__ent/";
   fs.readdir(schemaFolder, function (err, files) {
     async.eachSeries(files, function (file, next) {
-      console.log("Loading Schema from " + file);
+      //console.log("Loading Schema from " + file);
       var schemaObject = require(schemaFolder + file);
       if (typeof schemaObject.loadSchema == "function") {
         schemaObject.loadSchema(app, mssql, pool, fs);

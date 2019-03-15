@@ -9,6 +9,12 @@ var async = require("async"),
     fs = require("fs-extra"),
     format = require('pg-format');
 
+var invalidRequestError = {
+    name: "INVALID_REQUEST",
+    code: "50079",
+    msg: "your request has been rejected due to invalid request parameters"
+};
+
 function createSchema(app, mssql, pool2) {
     thisapp = app;
     thismssql = mssql;
@@ -21,6 +27,8 @@ function createSchema(app, mssql, pool2) {
     app.get('/api/syncdata', syncDataFromWeb);
 
     app.get('/api/addusersfromadtosql', addUserFromADToSQL);
+
+    app.get('/api/getadlastsync', getAdLastSync);
 }
 
 function syncDataFromWeb(req, res) {
@@ -298,6 +306,29 @@ function addAdSyncData(__o) {
         }).catch(function (err) {
             console.log(err);
         });
+    });
+}
+
+function getAdLastSync(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+        console.log("===Sync Data valid token===");
+        if (decodedToken.email) {
+            pool2.then((pool) => {
+                var request = pool.request();
+                console.log(req.query);
+                var query = "SELECT TOP 1 * FROM AdSync ORDER BY Id DESC";
+                request.query(query).then(function (data, recordsets, returnValue, affected) {
+                    mssql.close();
+                    res.send({ message: "Last Ad Sync Received successfully!", success: true, response: data.recordset });
+                }).catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+            });
+        } else {
+            res.status("401");
+            res.send(invalidRequestError);
+        }
     });
 }
 
