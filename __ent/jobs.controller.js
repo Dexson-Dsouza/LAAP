@@ -340,7 +340,7 @@ function createSchema(app, mssql, pool2) {
             mssql.Int,
             req.body.jobStatusUpdatedBy
           );
-          request.input("salary", mssql.Int, parseInt(req.body.salary));
+          request.input("salary", mssql.VarChar(500), req.body.salary);
           request.input("shift", mssql.Int, req.body.shift);
           if (req.body.salary) {
             request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
@@ -475,7 +475,7 @@ function createSchema(app, mssql, pool2) {
             req.body.jobTravelDetails
           );
           // request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
-          request.input("salary", mssql.Int, parseInt(req.body.salary));
+          request.input("salary", mssql.VarChar(500), req.body.salary);
           request.input("shift", mssql.Int, req.body.shift);
           request.input("updateTime", mssql.VarChar(50), new Date().getTime());
           request.input("updatedBy", mssql.Int, req.body.updatedBy);
