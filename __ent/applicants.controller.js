@@ -14,6 +14,12 @@ function createSchema(app, mssql, pool2) {
 
     app.get('/api/getapplicantcomments', getApplicantComments);
 
+    app.get('/api/getapplicantdmy', getApplicantsByDayMonthYear);
+
+    app.get('/api/getapplbymonth', getApplicantsByMonth);
+
+    app.get('/api/gtapplcountsbystatus', getApplicantsWithStatus);
+
     var invalidRequestError = {
         name: "INVALID_REQUEST",
         code: "50079",
@@ -182,6 +188,78 @@ function createSchema(app, mssql, pool2) {
                     request.execute('sp_GetApplicantComments').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "Applicants Comments rerived successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getApplicantsByDayMonthYear(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    var query = "";
+                    if (req.query.radioModel == 1) {
+                        query = "SELECT * FROM Applicants WHERE cast(ApplicantApplyDate as Date)= cast(Getdate() as Date)";
+                    } else if (req.query.radioModel == 2) {
+                        query = "SELECT * FROM Applicants WHERE MONTH(ApplicantApplyDate) = MONTH(Getdate())";
+                    } else {
+                        query = "SELECT * FROM Applicants WHERE YEAR(ApplicantApplyDate)=YEAR(Getdate())";
+                    }
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Applicants rerived successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getApplicantsByMonth(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    var q = "SELECT * FROM Applicants LEFT JOIN Jobs ON Applicants.AppliedForJob = Jobs.Id WHERE DATEPART(YEAR, ApplicantApplyDate) = " + req.query.year + " AND DATEPART(MONTH, ApplicantApplyDate) = " + req.query.month;
+                    request.query(q).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Applicants rerived successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getApplicantsWithStatus(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    request.execute("sp_GetApplicantCountsStatuswise").then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Applicants Statuses rerived successfully!", success: true, response: data.recordset });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);

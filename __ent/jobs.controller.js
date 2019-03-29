@@ -37,6 +37,10 @@ function createSchema(app, mssql, pool2) {
 
   app.post('/api/addlocation', addLocation);
 
+  app.get('/api/countofactjob', getCountActiveJobsLocationwise);
+
+  app.get('/api/getapplcntonactjbs', getApplicantCountsOnActiveJobs);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -629,6 +633,51 @@ function createSchema(app, mssql, pool2) {
             mssql.close();
             console.log(data);
             res.send({ message: "Location added successfully!", success: true });
+          }).catch(function (err) {
+            console.log(err);
+            res.send(err);
+          });
+        });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
+    });
+  }
+
+  function getCountActiveJobsLocationwise(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then((pool) => {
+          var request = pool.request();         
+          request.execute('sp_GetActiveJobLocationWise').then(function (data, recordsets, returnValue, affected) {
+            mssql.close();
+            console.log(data);
+            res.send({ message: "Count of active jobs location wise", success: true, response:data.recordset });
+          }).catch(function (err) {
+            console.log(err);
+            res.send(err);
+          });
+        });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
+    });
+  }
+
+  
+  function getApplicantCountsOnActiveJobs(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then((pool) => {
+          var request = pool.request();         
+          request.execute('sp_GetApplicantCountsOnActiveJobs').then(function (data, recordsets, returnValue, affected) {
+            mssql.close();
+            console.log(data);
+            res.send({ message: "Count of applicant on active job retrieved successfully!!", success: true, response:data.recordset });
           }).catch(function (err) {
             console.log(err);
             res.send(err);
