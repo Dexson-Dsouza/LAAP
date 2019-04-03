@@ -93,7 +93,7 @@ function sendMailAfterUpdateJob(updatedBy, jobId) {
     var replacements = {
       recruiter: aResult.DisplayName,
       jobTitle: bResult.JobTitle,
-      loginLink: ICS_ADMIN_URL + "/dashboard/jobs",
+      loginLink: ICS_ADMIN_URL + "/dashboard/approve-job",
       jobCustomTitle: bResult.JobCustomTitle
     };
     triggerMail("job-update.html", replacements, cResult.join(","), "Job Updated");

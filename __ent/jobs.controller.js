@@ -41,6 +41,14 @@ function createSchema(app, mssql, pool2) {
 
   app.get('/api/getapplcntonactjbs', getApplicantCountsOnActiveJobs);
 
+  app.get('/api/getjobdetailsforupdate/:jobId', getJobDetailsForJobUpdate);
+
+  app.get('/api/getupdtjobforapprove', getUpdatedJobForApproval);
+
+  app.get('/api/getalldetailsofupdatedjob', getAllDetailsOfUpdatedJob);
+
+  app.post('/api/approveupdatedjob', approveUpdatedJob);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -420,66 +428,24 @@ function createSchema(app, mssql, pool2) {
         pool2.then(pool => {
           var request = pool.request();
           console.log(req.body);
-          // request.input('postedBy', mssql.Int, parseInt(req.body.postedBy));
           request.input("jobId", mssql.Int, parseInt(req.body.jobId));
+          request.input("updatedBy", mssql.Int, req.body.updatedBy);
+          request.input("updateTime", mssql.VarChar(50), new Date().getTime());
+          request.input("updateNote", mssql.VarChar(1000), req.body.updateNote);
           request.input("jobType", mssql.Int, parseInt(req.body.jobType));
-          request.input(
-            "jobCategoryId",
-            mssql.Int,
-            parseInt(req.body.jobCategoryId)
-          );
-          // request.input('jobCompanyId', mssql.Int, parseInt(req.body.jobCompanyId));
+          request.input("jobCategoryId", mssql.Int, parseInt(req.body.jobCategoryId));
+          request.input("jobCustomTitle", mssql.VarChar(100), req.body.jobCustomTitle);
           request.input("jobTitle", mssql.VarChar(500), req.body.jobTitle);
-          request.input(
-            "jobCustomTitle",
-            mssql.VarChar(100),
-            req.body.jobCustomTitle
-          );
-          request.input(
-            "jobDescription",
-            mssql.VarChar(mssql.MAX),
-            req.body.jobDescription
-          );
-          request.input(
-            "numberOfPos",
-            mssql.Int,
-            parseInt(req.body.numberOfPos)
-          );
-          request.input(
-            "jobLocationId",
-            mssql.Int,
-            parseInt(req.body.jobLocationId)
-          );
-          request.input("expDate", mssql.VarChar(100), req.body.expDate);
-          request.input(
-            "requiredEducation",
-            mssql.VarChar(mssql.MAX),
-            req.body.requiredEducation
-          );
-          request.input(
-            "requiredExperience",
-            mssql.VarChar(mssql.MAX),
-            req.body.requiredExperience
-          );
-          request.input(
-            "requiredSkills",
-            mssql.VarChar(mssql.MAX),
-            req.body.requiredSkills
-          );
-          // request.input('jobPostedDate', mssql.VarChar(100), req.body.jobPostedDate);
-          // request.input('jobStatus', mssql.Int, parseInt(req.body.jobStatus));
+          request.input("jobDescription", mssql.VarChar(mssql.MAX), req.body.jobDescription);
+          request.input("numberOfPos", mssql.Int, parseInt(req.body.numberOfPos));
+          request.input("jobLocationId", mssql.Int, parseInt(req.body.jobLocationId));
+          request.input("requiredEducation", mssql.VarChar(mssql.MAX), req.body.requiredEducation);
+          request.input("requiredExperience", mssql.VarChar(mssql.MAX), req.body.requiredExperience);
+          request.input("requiredSkills", mssql.VarChar(mssql.MAX), req.body.requiredSkills);
           request.input("jobTravel", mssql.Int, parseInt(req.body.jobTravel));
-          request.input(
-            "jobTravelDetails",
-            mssql.VarChar(2000),
-            req.body.jobTravelDetails
-          );
-          // request.input('jobStatusUpdatedBy', mssql.Int, req.body.jobStatusUpdatedBy);
+          request.input("jobTravelDetails", mssql.VarChar(2000), req.body.jobTravelDetails);
           request.input("salary", mssql.VarChar(500), req.body.salary);
           request.input("shift", mssql.Int, req.body.shift);
-          request.input("updateTime", mssql.VarChar(50), new Date().getTime());
-          request.input("updatedBy", mssql.Int, req.body.updatedBy);
-          request.input("updateNote", mssql.VarChar(1000), req.body.updateNote);
           if (req.body.salary) {
             request.input("salaryCurrency", mssql.Int, req.body.salaryCurrency);
             //null 0 1
@@ -650,11 +616,11 @@ function createSchema(app, mssql, pool2) {
       console.log("Token Valid");
       if (decodedToken.email) {
         pool2.then((pool) => {
-          var request = pool.request();         
+          var request = pool.request();
           request.execute('sp_GetActiveJobLocationWise').then(function (data, recordsets, returnValue, affected) {
             mssql.close();
             console.log(data);
-            res.send({ message: "Count of active jobs location wise", success: true, response:data.recordset });
+            res.send({ message: "Count of active jobs location wise", success: true, response: data.recordset });
           }).catch(function (err) {
             console.log(err);
             res.send(err);
@@ -667,17 +633,16 @@ function createSchema(app, mssql, pool2) {
     });
   }
 
-  
   function getApplicantCountsOnActiveJobs(req, res) {
     jwtToken.verifyRequest(req, res, decodedToken => {
       console.log("Token Valid");
       if (decodedToken.email) {
         pool2.then((pool) => {
-          var request = pool.request();         
+          var request = pool.request();
           request.execute('sp_GetApplicantCountsOnActiveJobs').then(function (data, recordsets, returnValue, affected) {
             mssql.close();
             console.log(data);
-            res.send({ message: "Count of applicant on active job retrieved successfully!!", success: true, response:data.recordset });
+            res.send({ message: "Count of applicant on active job retrieved successfully!!", success: true, response: data.recordset });
           }).catch(function (err) {
             console.log(err);
             res.send(err);
@@ -686,6 +651,113 @@ function createSchema(app, mssql, pool2) {
       } else {
         res.status("401");
         res.send(invalidRequestError);
+      }
+    });
+  }
+
+  function getJobDetailsForJobUpdate(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          request.input("jobId", mssql.Int, req.params.jobId);
+          request
+            .execute("sp_GetJobDetailsForJobUpdate")
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Data retrieved successfully!",
+                success: true,
+                response: data.recordset[0]
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+  }
+
+  function getUpdatedJobForApproval(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          request
+            .execute("sp_GetUpdatedJobsForApprove")
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Data retrieved successfully!",
+                success: true,
+                response: data.recordset
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+  }
+
+  function getAllDetailsOfUpdatedJob(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.query);
+          var query = "select * from GetUpdatedJobUpdateDetails where TrackId = " + req.query.TrackId;
+          request
+            .query(query)
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Data retrieved successfully!",
+                success: true,
+                response: data.recordset[0]
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+  }
+
+  function approveUpdatedJob(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          request.input("TrackId", mssql.Int, parseInt(req.body.TrackId));
+          request.input("JobId", mssql.Int, parseInt(req.body.JobId));
+          request
+            .execute("sp_ApproveUpdatedJob")
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Update Job approved successfully!",
+                success: true
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
       }
     });
   }
