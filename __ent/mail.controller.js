@@ -126,6 +126,34 @@ function sendMailAfterApproveJob(jobId) {
   });
 };
 
+/**
+ * Sending mail recruiter who had made changes in job,
+ * after updated job  * has been approved
+ *  * @param {*} jobId 
+ */
+function sendMailAfterApproveUpdatedJob(jobId) {
+  console.log("==========Send Mail After Approve Update of the Job==========");
+  console.log(jobId);
+  var sharedData;
+  async.waterfall([
+    function (callback) {
+      getUpdatedJobDetails(jobId, callback);
+    },
+    function (aResult, callback) {
+      sharedData = aResult;
+      getPostedByUserDetails(callback, aResult.UpdatedById);
+    }
+  ], function (err, results) {
+    var aResult = sharedData;
+    var bResult = results.EmailAddress;
+    var replacements = {
+      jobTitle: aResult.JobTitle,
+      jobLink: ICS_URL + "/job/" + aResult.JobCustomTitle + "/" + aResult.jobId
+    };
+    triggerMail("job-update-published.html", replacements, bResult, "New changes approved - "+aResult.JobTitle);
+  });
+}
+
 /*
 **THis function send mail to the approvers/recruiter that
 **new new applicant submitted his resume.
@@ -559,6 +587,26 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
   });
 }
 
+/*
+**THis function returns the updated job details
+** 
+*/
+function getUpdatedJobDetails(jobId, callback) {
+  pool2.then((pool) => {
+    var request = pool.request();
+    var query = "select Top 1 * from GetUpdatedJobUpdateDetails where jobId = " + jobId + " ORDER BY TrackId DESC";
+    request.query(query).then(function (data, recordsets, returnValue, affected) {
+      mssql.close();
+      var __o = data.recordset[0];
+      callback(null, __o)
+    }).catch(function (err) {
+      console.log(err);
+      callback(err)
+    });
+  });
+}
+
+
 //exports javascript function
 exports.sendMailAfterJobAdd = sendMailAfterJobAdd;
 exports.sendMailAfterApproveJob = sendMailAfterApproveJob;
@@ -567,4 +615,5 @@ exports.sendMailToApplicant = sendMailToApplicant;
 exports.sendMailToIrrelevantApplicant = sendMailToIrrelevantApplicant;
 exports.sendMailAfterUpdateJob = sendMailAfterUpdateJob;
 exports.informRecruiterOnApplicantCountOnJob = informRecruiterOnApplicantCountOnJob;
+exports.sendMailAfterApproveUpdatedJob = sendMailAfterApproveUpdatedJob;
 module.exports.loadSchema = createSchema;

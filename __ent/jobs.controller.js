@@ -49,6 +49,8 @@ function createSchema(app, mssql, pool2) {
 
   app.post('/api/approveupdatedjob', approveUpdatedJob);
 
+  app.get('/api/getupdatedjobbyjobid', getAllDetailsOfUpdatedJobByJobId);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -497,39 +499,6 @@ function createSchema(app, mssql, pool2) {
     });
   }
 
-  function updateJobStatus(req, res) {
-    jwtToken.verifyRequest(req, res, decodedToken => {
-      console.log("Token Valid");
-      if (decodedToken.email) {
-        pool2.then(pool => {
-          var request = pool.request();
-          console.log(req.body);
-          var status = req.body.status;
-          var jobId = req.body.jobId;
-          request
-            .query("UPDATE Jobs SET JobStatus=" + status + " WHERE Id=" + jobId)
-            .then(function (data, recordsets, returnValue, affected) {
-              mssql.close();
-              res.send({
-                message: "Job Status updated successfully!",
-                success: true
-              });
-              if (status == 1) {
-                mailer.sendMailAfterApproveJob(jobId);
-              }
-            })
-            .catch(function (err) {
-              console.log(err);
-              res.send(err);
-            });
-        });
-      } else {
-        res.status("401");
-        res.send(invalidRequestError);
-      }
-    });
-  }
-
   function addCategory(req, res) {
     jwtToken.verifyRequest(req, res, decodedToken => {
       console.log("Token Valid");
@@ -751,6 +720,106 @@ function createSchema(app, mssql, pool2) {
               res.send({
                 message: "Update Job approved successfully!",
                 success: true
+              });
+              mailer.sendMailAfterApproveUpdatedJob(req.body.JobId);
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+  }
+
+  function updateJobStatus(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.body);
+          var status = req.body.status;
+          //if job approval process
+          if (status == 1) {
+            getTrackIdOfUpdatedJob(req, res);
+          } else {
+            triggerUpdateStatusOfJob(req, res);
+          }
+        });
+      } else {
+        res.status("401");
+        res.send(invalidRequestError);
+      }
+    });
+  }
+
+  function getTrackIdOfUpdatedJob(req, res) {
+    pool2.then(pool => {
+      var request = pool.request();
+      request
+        .query("SELECT TOP 1  JobUpdate.TrackId FROM JobUpdate WHERE JobId = " + req.body.jobId + " ORDER BY JobUpdate.TrackId DESC")
+        .then(function (data, recordsets, returnValue, affected) {
+          mssql.close();
+          console.log("====Job For Apporval====");
+          console.log(data.recordset[0]);
+          if (typeof (data.recordset[0]) != "undefined") {
+            req.body.TrackId = data.recordset[0].TrackId;
+            req.body.JobId = req.body.jobId;
+            approveUpdatedJob(req, res);
+          } else {
+            triggerUpdateStatusOfJob(req, res);
+          }
+        })
+        .catch(function (err) {
+          console.log(err);
+          res.send(err);
+        });
+    });
+  }
+
+  function triggerUpdateStatusOfJob(req, res) {
+    pool2.then(pool => {
+      var request = pool.request();
+      var jobId = req.body.jobId;
+      var status = req.body.status;
+
+      request
+        .query("UPDATE Jobs SET JobStatus=" + status + " WHERE Id=" + jobId)
+        .then(function (data, recordsets, returnValue, affected) {
+          mssql.close();
+          res.send({
+            message: "Job Status updated successfully!",
+            success: true
+          });
+          if (status == 1) {
+            mailer.sendMailAfterApproveJob(jobId);
+          }
+        })
+        .catch(function (err) {
+          console.log(err);
+          res.send(err);
+        });
+    });
+  }
+
+  function getAllDetailsOfUpdatedJobByJobId(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.query);
+          var query = "select Top 1 * from GetUpdatedJobUpdateDetails where jobId = " + req.query.jobId + " ORDER BY TrackId DESC";
+          request
+            .query(query)
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Data retrieved successfully!",
+                success: true,
+                response: data.recordset[0]
               });
             })
             .catch(function (err) {
