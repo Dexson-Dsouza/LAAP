@@ -73,7 +73,7 @@ function sendMailAfterJobAdd(postedById, jobId) {
 **new job is added, pls review and publish it
 */
 function sendMailAfterUpdateJob(updatedBy, jobId) {
-  console.log("==========Send Mail After Job Add==========");
+  console.log("==========Send Mail After Job Updated==========");
   console.log(updatedBy);
   console.log(jobId);
   async.series([

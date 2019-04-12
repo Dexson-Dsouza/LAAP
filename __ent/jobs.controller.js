@@ -51,6 +51,10 @@ function createSchema(app, mssql, pool2) {
 
   app.get('/api/getupdatedjobbyjobid', getAllDetailsOfUpdatedJobByJobId);
 
+  app.post('/api/createdjobforapproval', createdJobForApproval);
+
+  app.post('/api/updatedjobforapproval', updatedJobForApproval);
+
   app.get("/api/mail", function () {
     // mailer.sendMailAfterApplicantsApplied(mssql, pool2, 925);
   });
@@ -369,7 +373,7 @@ function createSchema(app, mssql, pool2) {
                 success: true,
                 response: data.recordset
               });
-              mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
+              // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
             })
             .catch(function (err) {
               console.log(err);
@@ -465,7 +469,7 @@ function createSchema(app, mssql, pool2) {
                 success: true,
                 response: data.recordset
               });
-              mailer.sendMailAfterUpdateJob(req.body.updatedBy, parseInt(req.body.jobId));
+              // mailer.sendMailAfterUpdateJob(req.body.updatedBy, parseInt(req.body.jobId));
             })
             .catch(function (err) {
               console.log(err);
@@ -829,6 +833,71 @@ function createSchema(app, mssql, pool2) {
         });
       }
     });
+  }
+
+  function createdJobForApproval(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        mailer.sendMailAfterJobAdd(req.body.postedBy, req.body.jobId);
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.body);
+          var query;
+          if (typeof (req.body.TrackId) != "undefined") {
+            query = "Update JobUpdate Set IsDraft = 0 WHERE JobId=" + req.body.jobId + " AND TrackId = " + req.body.TrackId;
+            query += ";Update Jobs Set IsDraft = 0 WHERE Id=" + req.body.jobId;
+          } else {
+            query = "Update Jobs Set IsDraft = 0 WHERE Id=" + req.body.jobId;
+          }
+          request
+            .query(query)
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Job is created and sent for an approval",
+                success: true
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+  }
+
+  function updatedJobForApproval(req, res) {
+    jwtToken.verifyRequest(req, res, decodedToken => {
+      console.log("Token Valid");
+      if (decodedToken.email) {
+        mailer.sendMailAfterUpdateJob(req.body.updatedBy, parseInt(req.body.jobId));
+        pool2.then(pool => {
+          var request = pool.request();
+          console.log(req.query);
+          var query = "Update JobUpdate Set IsDraft = 0 WHERE JobId=" + req.body.jobId + " AND TrackId = " + req.body.TrackId;
+          query += ";Update Jobs Set IsDraft = 0 WHERE Id=" + req.body.jobId;
+          console.log(query);
+          request
+            .query(query)
+            .then(function (data, recordsets, returnValue, affected) {
+              mssql.close();
+              console.log(data);
+              res.send({
+                message: "Job updates are sent for an approval",
+                success: true
+              });
+            })
+            .catch(function (err) {
+              console.log(err);
+              res.send(err);
+            });
+        });
+      }
+    });
+
   }
 }
 module.exports.loadSchema = createSchema;
