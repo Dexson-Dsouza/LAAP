@@ -65,13 +65,19 @@ app.use(
 var pool;
 function connectToDatabase() {
   var config = {
-    user: "dex",
-    password: "localhost",
-    server: "DEXSON-PC",
+    user: "sa",
+    password: "Infinite123#",
+    server: "INMDCS43873\\MSSQLSERVER14",
     port: 1433,
-    database: "Infinite_careers_v1",
+    database: "Infinite_L&A_v1",
     options: {
       encrypt: false
+    },
+	connectionTimeout: 300000,
+    requestTimeout: 300000,
+    pool: {
+        idleTimeoutMillis: 300000,
+        max: 100
     }
   };
   pool = new mssql.ConnectionPool(config)
