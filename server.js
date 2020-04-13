@@ -65,11 +65,11 @@ app.use(
 var pool;
 function connectToDatabase() {
   var config = {
-    user: "sa",
-    password: "Infinite123#",
-    server: "INMDCD0212",
+    user: "dex",
+    password: "localhost",
+    server: "DEXSON-PC",
     port: 1433,
-    database: "Infinite_Centralized_DB_Test",
+    database: "Infinite_careers_v1",
     options: {
       encrypt: false
     }
@@ -102,9 +102,9 @@ function readDirectories() {
   });
 }
 
-var syncWithAd = require('./__ent/datamigrate.controller');
-cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
-  console.log('Cron Jobs Run every 3 hrs');
-  console.log(new Date());
-  syncWithAd.syncData();
-});
+// var syncWithAd = require('./__ent/datamigrate.controller');
+// cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
+//   console.log('Cron Jobs Run every 3 hrs');
+//   console.log(new Date());
+//   syncWithAd.syncData();
+// });
