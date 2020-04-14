@@ -30,39 +30,35 @@ function verifyJWTToken(req, res, successcallback, errorCallback) {
 	token = token.split(" ");
 	console.log('token' + token);
 	console.log(token.length);
-	if (token[2] && token[2] == 'directory') {
-		successcallback('directory');
-	}
-	else {
-		if ((token[1] in LoggedInUsers) && LoggedInUsers[token[1]] == true && (UsersExpiryTime[token[1]] - new Date().getTime()) >= 0) {
-			UsersExpiryTime[token[1]] = new Date().getTime() + SessionTime;
-			var secret = new Buffer.from(SECRETKEY, "base64");
-			var decoded = jwt.verify(token[1], secret, function (err, decoded) {
-				if (err) {
-					console.log(err);
-					if (!errorCallback) {
-						res.status(401);
-						res.send(err);
-					}
-					else
-						errorCallback(err);
-				} else {
-					console.log('decoded' + JSON.stringify(decoded));
-					successcallback(decoded);
+	if ((token[1] in LoggedInUsers) && LoggedInUsers[token[1]] == true && (UsersExpiryTime[token[1]] - new Date().getTime()) >= 0) {
+		UsersExpiryTime[token[1]] = new Date().getTime() + SessionTime;
+		var secret = new Buffer.from(SECRETKEY, "base64");
+		var decoded = jwt.verify(token[1], secret, function (err, decoded) {
+			if (err) {
+				console.log(err);
+				if (!errorCallback) {
+					res.status(401);
+					res.send(err);
 				}
-			});
-		} else {
-			if (token[1] in LoggedInUsers && LoggedInUsers[token[1]] == true) {
-				LoggedInUsers[token[1]] = false;
+				else
+					errorCallback(err);
+			} else {
+				console.log('decoded' + JSON.stringify(decoded));
+				successcallback(decoded);
 			}
-			if (token[1] in UsersExpiryTime) {
-				delete UsersExpiryTime[token[1]];
-			}
-			res.status(401);
-			res.send({ "success": false, "message": "Token Expired", "code": "57005" });
-			return;
+		});
+	} else {
+		if (token[1] in LoggedInUsers && LoggedInUsers[token[1]] == true) {
+			LoggedInUsers[token[1]] = false;
 		}
+		if (token[1] in UsersExpiryTime) {
+			delete UsersExpiryTime[token[1]];
+		}
+		res.status(401);
+		res.send({ "success": false, "message": "Token Expired", "code": "57005" });
+		return;
 	}
+
 };
 
 
