@@ -38,7 +38,7 @@ function createSchema(app, mssql, pool2, fs) {
         pool2.then((pool) => {
             var request = pool.request();
             request.input('username', mssql.VarChar(2000), username);
-            request.execute("sp_GetUserDetailsByUsername").then(function (data, recordsets, returnValue, affected) {
+            request.execute("sp_GetEmpDetailsByUsername").then(function (data, recordsets, returnValue, affected) {
                 mssql.close();
                 console.log(data.recordset[0]);
                 if(typeof(data.recordset[0])!="undefined"){

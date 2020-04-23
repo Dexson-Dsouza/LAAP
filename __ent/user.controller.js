@@ -25,6 +25,13 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/userExists', userExists);
 
+    app.get('/api/getholidaylist', getHolidayList);
+
+    app.get('/api/getlatestattendance', getlatestattendance);
+
+    app.post('/api/add-hr-policy', addPolicy);
+
+
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("valid token");
@@ -77,9 +84,10 @@ function createSchema(app, mssql, pool2, fs) {
             console.log("valid token");
             if (decodedToken.email) {
                 pool2.then((pool) => {
+                    console.log('sp_GetEmployeeDetails')
                     var request = pool.request();
                     request.input('userId', mssql.Int, req.query.userId);
-                    request.execute('sp_GetUserDetails').then(function (data, recordsets, returnValue, affected) {
+                    request.execute('sp_GetEmployeeDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "User data retrieved successfully!", success: true, response: data.recordset[0] });
                     }).catch(function (err) {
@@ -284,6 +292,74 @@ function createSchema(app, mssql, pool2, fs) {
                 console.log(err);
                 res.send(err);
             });
+        });
+    }
+    function getHolidayList(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    var query = 'select * from HolidayList';
+                    console.log(query);
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Holiday List Retrieved successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getlatestattendance(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    console.log('[sp_latestAttendanceOfEmployee]');
+                    request.input('empcode', mssql.Int, req.query.empcode);
+                    request.execute("[sp_latestAttendanceOfEmployee]").then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Latest Attendance Retrieved!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+    function addPolicy(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();   
+                    var query='insert into Policies(Data) values('+req.body.text+')'; 
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "policy stored", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
         });
     }
 }

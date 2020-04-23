@@ -5,7 +5,7 @@ var mssql = require("mssql"),
   bodyParser = require("body-parser"),
   app = express(),
   cors = require("cors");
-  cron = require('node-schedule');
+cron = require('node-schedule');
 global.__basedir = __dirname;
 // Allow urls from this array only
 var whitelist = [
@@ -52,7 +52,7 @@ var corsOptions = {
   credentials: true
 };
 
-app.use('/profileimg', express.static(__dirname+'/uploads/'));
+app.use('/profileimg', express.static(__dirname + '/uploads/'));
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.json({ type: "application/vnd.api+json" }));
@@ -73,11 +73,11 @@ function connectToDatabase() {
     options: {
       encrypt: false
     },
-	connectionTimeout: 300000,
+    connectionTimeout: 300000,
     requestTimeout: 300000,
     pool: {
-        idleTimeoutMillis: 300000,
-        max: 100
+      idleTimeoutMillis: 300000,
+      max: 100
     }
   };
   pool = new mssql.ConnectionPool(config)
@@ -107,10 +107,15 @@ function readDirectories() {
     });
   });
 }
+var sync = require('./__ent/datamigrate.controller'); 
 
 // var syncWithAd = require('./__ent/datamigrate.controller');
 // cron.scheduleJob('0 0 */2 * * *', function () {//run every hour when minute = 1
-//   console.log('Cron Jobs Run every 3 hrs');
+//   console.log('sync in 12 hrs');
 //   console.log(new Date());
-//   syncWithAd.syncData();
+//   sync.connectToDatabase2();
 // });
+
+
+
+
