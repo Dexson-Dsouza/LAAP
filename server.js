@@ -116,6 +116,11 @@ var sync = require('./__ent/datamigrate.controller');
 //   sync.connectToDatabase2();
 // });
 
+// cron.scheduleJob("*/2 * * * *", function() {
+//   console.log('This runs every 2 minutes');
+//   sync.IncrementLeaveBal();
+// });
+
 
 
 

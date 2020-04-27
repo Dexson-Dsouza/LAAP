@@ -147,5 +147,24 @@ function transferEmployee(pool1, emps) {
         console.log('connection closed');
     }
 }
+
+function IncrementLeaveBal() {
+    thispool2.then((pool) => {
+        var request = pool.request();
+        request.query('select * from [Leave_Increment_Monthly]').then(function (data, recordsets, returnValue, affected) {
+            var inc = data.recordset[0].Increase_Factor;
+            console.log(data.recordset);
+            var query = 'update [EmployeeLeaveBalance] set LeaveBalance= LeaveBalance +' + inc;
+            request.query(query).then(function (data, recordsets, returnValue, affected) {
+                thismssql.close();
+                console.log('updated Leave Balance');
+            }, err => {
+                console.log('failed ' + err);
+                thismssql.close();
+            })
+        })
+    })
+}
 module.exports.loadSchema = createSchema;
 exports.connectToDatabase2 = connectToDatabase2;
+exports.IncrementLeaveBal = IncrementLeaveBal;
