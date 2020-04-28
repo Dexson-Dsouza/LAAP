@@ -39,19 +39,27 @@ function createSchema(app, mssql, pool2, fs) {
             var request = pool.request();
             request.input('username', mssql.VarChar(2000), username);
             request.execute("sp_GetEmpDetailsByUsername").then(function (data, recordsets, returnValue, affected) {
-                mssql.close();
                 console.log(data.recordset[0]);
-                if(typeof(data.recordset[0])!="undefined"){
-                    res.send({ message: "User retrieved successfully!", 
-                    success: true, 
-                    response: data.recordset[0], 
-                    token: jwtToken.createJWTToken(data.recordset[0]) });
-                }  
-                else{
-                    res.send({ message: "User not authorized!", 
-                    success: false,
-                    code: 5002 })
-                }              
+                if (typeof (data.recordset[0]) != "undefined") {
+                    var request = pool.request();
+                    request.input("userId", mssql.Int, data.recordset[0].Id);
+                    request.execute("sp_GetEmployeeDetails").then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({
+                            message: "User retrieved successfully!",
+                            success: true,
+                            response: data.recordset[0],
+                            token: jwtToken.createJWTToken(data.recordset[0])
+                        });
+                    })
+                }
+                else {
+                    res.send({
+                        message: "User not authorized!",
+                        success: false,
+                        code: 5002
+                    })
+                }
             }).catch(function (err) {
                 console.log(err);
                 res.send(err);

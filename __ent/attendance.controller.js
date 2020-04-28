@@ -59,6 +59,13 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_EditEmployeeAttendance');
+                    if (new Date(req.body.InTime) == "Invalid Date" || new Date(req.body.OutTime) == "Invalid Date" || new Date(req.body.AttendanceDate) == "Invalid Date") {
+                        res.send({
+                            message: "invalid date",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));
                     request.input("AttendanceDate", mssql.VarChar(100), req.body.AttendanceDate);
                     request.input("InTime", mssql.VarChar(100), req.body.InTime);

@@ -45,6 +45,7 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/add-edit-usereducationdetails', AddEditUserEducationDetails);
 
+    app.post('/api/delete-usereducationdetails', deleteUserEducationDetails);
 
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -455,16 +456,16 @@ function createSchema(app, mssql, pool2, fs) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log("sp_AddEditUserPersonalDetails");
-                    request.input('userId', mssql.VarChar(2000), req.body.userId);
-                    request.input('secondary', mssql.VarChar(2000), req.body.secondary);
-                    request.input('bloodgroup', mssql.VarChar(2000), req.body.bloodgroup);
-                    request.input('bday', mssql.VarChar(2000), req.body.bday);
-                    request.input('bio', mssql.VarChar(2000), req.body.bio);
-                    request.input('linkedin', mssql.VarChar(2000), req.body.linkedin);
-                    request.input('insta', mssql.VarChar(2000), req.body.insta);
-                    request.input('fb', mssql.VarChar(2000), req.body.fb);
-                    request.input('twit', mssql.VarChar(2000), req.body.twit);
-                    request.input('ext', mssql.VarChar(2000), req.body.ext);
+                    request.input('userId', mssql.VarChar(2000), req.body.UserId);
+                    request.input('secondary', mssql.VarChar(2000), req.body.SecondaryNo);
+                    request.input('bloodgroup', mssql.VarChar(2000), req.body.BloodGroup);
+                    request.input('bday', mssql.VarChar(2000), req.body.Birthday);
+                    request.input('bio', mssql.VarChar(2000), req.body.Bio);
+                    request.input('linkedin', mssql.VarChar(2000), req.body.LinkedIn);
+                    request.input('insta', mssql.VarChar(2000), req.body.Instagram);
+                    request.input('fb', mssql.VarChar(2000), req.body.Facebook);
+                    request.input('twit', mssql.VarChar(2000), req.body.Twitter);
+                    request.input('ext', mssql.VarChar(2000), req.body.Ext);
                     request.execute('sp_AddEditUserPersonalDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         console.log("=============");
@@ -514,12 +515,46 @@ function createSchema(app, mssql, pool2, fs) {
                     pool2.then((pool) => {
                         var request = pool.request();
                         console.log(member);
-                        request.input('userId', mssql.Int, member.obj.userId);
-                        request.input('type', mssql.VarChar(2000), member.obj.type);
-                        request.input('details', mssql.VarChar(2000), member.obj.details);
-                        request.input('title', mssql.VarChar(2000), member.obj.title);
-                        request.input('id', mssql.VarChar(2000), member.obj.id);
+                        request.input('userId', mssql.Int, member.obj.UserId);
+                        request.input('type', mssql.VarChar(2000), member.obj.Type);
+                        request.input('details', mssql.VarChar(2000), member.obj.Details);
+                        request.input('title', mssql.VarChar(2000), member.obj.Title);
+                        request.input('id', mssql.VarChar(2000), member.obj.Id);
                         request.execute('sp_AddEditUserEducationDetails').then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            console.log("Index ==>", member.index);
+                            if (member.index == (someArray.length - 1)) {
+                                console.log("in if");
+                                res.send({ message: "Data Saved!" });
+                            } else {
+                                console.log("in else");
+                                callback();
+                            }
+                        }).catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                            callback();
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    function deleteUserEducationDetails(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("Token Valid");
+            if (decodedToken.email) {
+                console.log(req.body.List);
+                var someArray = req.body.List
+                var arrayWithIndx = someArray.map(function (e, i) { return { obj: e, index: i } });
+                console.log(arrayWithIndx);
+                async.eachSeries(arrayWithIndx, function (member, callback) {
+                    pool2.then((pool) => {
+                        var request = pool.request();
+                        console.log(member);
+                        request.input('id', mssql.VarChar(2000), member.obj.Id);
+                        request.execute('sp_DeleteUserEducationDetails').then(function (data, recordsets, returnValue, affected) {
                             mssql.close();
                             console.log("Index ==>", member.index);
                             if (member.index == (someArray.length - 1)) {
