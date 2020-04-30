@@ -21,6 +21,7 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/approve-reject-leave", approveRejectLeave);
 
+    app.post("/api/disapprove-leave", disapprove)
 
     function getLeaveStatus(req, res) {
         pool2.then(pool => {
@@ -74,7 +75,7 @@ function createSchema(app, mssql, pool2) {
                             });
                             if (diffDays > 2) {
                                 req.body.leaveId = data.recordset[0].Id;
-                                // addHodApproval(req, res);
+                                addHodApproval(req, res);
                             }
                             // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
                         })
@@ -92,15 +93,52 @@ function createSchema(app, mssql, pool2) {
 
     function addHodApproval(req, res) {
         pool2.then(pool => {
-            var query = "insert into leaveDetails ([LeaveId],[ApproverId],Status)values(" +
-                "(select top 1 e.Id  from EmployeeLeave e  where userid=" + parseInt(req.body.userId) + " order by id desc),"
-            "select HOD from Department where id =(select DeptId from EmployeeDeptMapper where UserId=" + parseInt(req.body.userId) + "),"
-                + "3)";
+            var request = pool.request();
+            var query = "select UserId from [EmployeeDeptMapper] where Deptid =(select DeptId from EmployeeDeptMapper where UserId=" + req.body.userId + ") and Roleid=1"
             request
                 .query(query)
                 .then(function (data, recordsets, returnValue, affected) {
-                    mssql.close();
-                    console.log('hod added')
+                    var request = pool.request();
+                    var query = "  select approverid as UserId from [LeaveDetails] where Leaveid =(select top 1 e.Id  from EmployeeLeave e  where userid="
+                        + req.body.userId + " order by id desc)";
+                    request
+                        .query(query)
+                        .then(function (data2, recordsets, returnValue, affected) {
+                            var mang = [];
+                            for(var x of data2.recordset){
+                                mang.push(x.UserId);
+                            }
+                            var arr = [];
+                            console.log('manager list = ')
+                            console.log(mang);
+                            console.log('hod list = ')
+                            console.log(data.recordset);
+                            for (var d of data.recordset) {
+                                if (d.UserId != req.body.userId && !mang.includes(d.UserId)) {
+                                    arr.push(d);
+                                }
+                            }
+                            console.log('fin list = ')
+                            console.log(arr);
+
+                            async.eachSeries(arr, function (__t, callback) {
+                                var request = pool.request();
+                                var query = "insert into [LeaveDetails] values("
+                                    + "(select top 1 e.Id  from EmployeeLeave e  where userid=" + parseInt(req.body.userId) + " order by id desc),"
+                                    + __t.UserId + ",3)";
+                                request
+                                    .query(query)
+                                    .then(function (data, recordsets, returnValue, affected) {
+                                        callback();
+                                    }).catch(function (err) {
+                                        console.log(err);
+                                        callback();
+                                    });
+                            }, () => {
+                                mssql.close();
+                                console.log('hod approval added')
+                            })
+                        })
                 })
         })
     }
@@ -288,7 +326,7 @@ function createSchema(app, mssql, pool2) {
             var query;
             console.log(req.body);
             if (records.length == 1) {
-                query = "update EmployeeLeave set status = 1 where Id = " + req.body.leaveId;
+                query = "update EmployeeLeave set status = 1 where status=3 and Id = " + req.body.leaveId;
                 //console.log('single accepted')
                 request
                     .query(query)
@@ -315,7 +353,7 @@ function createSchema(app, mssql, pool2) {
                 });
                 if (__t) {
                     //  console.log('group accept')
-                    query = "update EmployeeLeave set status = 1 where Id = " + req.body.leaveId;
+                    query = "update EmployeeLeave set status = 1 where status=3 and Id = " + req.body.leaveId;
                     request
                         .query(query)
                         .then(function (data, recordsets, returnValue, affected) {
@@ -344,6 +382,7 @@ function createSchema(app, mssql, pool2) {
 
     function deductLeaveBalance(leaveId, userId) {
         pool2.then(pool => {
+            var request = pool.request();
             request.input("leaveId", mssql.Int, leaveId);
             request.input("userId", mssql.Int, userId);
             request
@@ -396,5 +435,63 @@ function createSchema(app, mssql, pool2) {
             }
         });
     }
+
+
+    function disapprove(req, res) {
+        pool2.then(pool => {
+            var request = pool.request();
+            console.log(req.body);
+            console.log('disapproveLeave');
+            var query = "select * from EmployeeLeave where Id = " + req.body.leaveId;
+            request
+                .query(query)
+                .then(function (data, recordsets, returnValue, affected) {
+                    var leave = data.recordset[0];
+                    var request = pool.request();
+                    var query = "update EmployeeLeave set status = 2 where Id = " + req.body.leaveId;
+                    console.log(data.recordset[0]);
+                    request
+                        .query(query)
+                        .then(function (data, recordsets, returnValue, affected) {
+                            if (leave.Status == 1) {
+                                restoreLeaves(req.body.leaveId, req.body.userId);;
+                            }
+                            mssql.close();
+                            res.send({
+                                message: "Leave Status Updated successfully!",
+                                success: true,
+                            });
+                        }).catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });;
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        });
+    }
+
+    function restoreLeaves(leaveId, userId) {
+        pool2.then(pool => {
+            console.log("sp_restoreLeaveBalance");
+            console.log(leaveId, userId)
+            var request = pool.request();
+            request.input("leaveId", mssql.Int, leaveId);
+            request.input("userId", mssql.Int, userId);
+            request
+                .execute("sp_restoreLeaveBalance")
+                .then(function (data, recordsets, returnValue, affected) {
+                    mssql.close();
+                    console.log('done');
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        })
+    }
+
 }
 module.exports.loadSchema = createSchema;
