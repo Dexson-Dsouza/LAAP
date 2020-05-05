@@ -2,7 +2,7 @@ function createSchema(app, mssql, pool2) {
 
     var jwtToken = require("./jwt.controller");
 
- //   var mailer = require("./mail.controller.js");
+    //   var mailer = require("./mail.controller.js");
 
     var async = require("async");
 
@@ -60,6 +60,8 @@ function createSchema(app, mssql, pool2) {
                         request.input('UserId', mssql.Int, member.obj.UserId);
                         request.input('TeamId', mssql.Int, member.obj.TeamId);
                         request.input('RoleId', mssql.Int, member.obj.RoleId);
+                        request.input('AddedBy', mssql.Int, member.obj.AddedBy);
+                        request.input('AddedOn', mssql.VarChar(100), member.obj.AddedOn);
                         request.execute('sp_addEmployeeInTeam').then(function (data, recordsets, returnValue, affected) {
                             mssql.close();
                             console.log("Index ==>", member.index);

@@ -1,7 +1,7 @@
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
 
-    //  var mailer = require("./mail.controller.js");
+    var mailer = require("./mail.controller.js");
 
     var async = require("async");
 
@@ -64,25 +64,69 @@ function createSchema(app, mssql, pool2) {
                     var endDate = new Date(req.body.endDate);
                     var diffDays = Math.round(Math.abs((startDate.getTime() - endDate.getTime()) / (oneDay)));
                     console.log(diffDays);
-                    request
-                        .execute("sp_AddLeave")
-                        .then(function (data, recordsets, returnValue, affected) {
-                            mssql.close();
-                            res.send({
-                                message: "Leave added successfully!",
-                                success: true,
-                                response: data.recordset
-                            });
-                            if (diffDays > 2) {
-                                req.body.leaveId = data.recordset[0].Id;
-                                addHodApproval(req, res);
+
+                    if (parseInt(req.body.leaveCategory) == 5) {
+                        request.input("endDate", mssql.VarChar(100), req.body.startDate);
+                        var request2 = pool.request();
+                        var moment = require('moment');
+                        var date = moment(req.body.startDate).format('YYYY-MM-DD');
+                        var query = 'select * from HolidayList where holidaytype=1';
+                        console.log(date);
+                        request2.query(query).then(function (data, recordsets, returnValue, affected) {
+                            var floatingList = [];
+                            floatingList = data.recordset
+                            var exists = false;
+                            floatingList.filter((x) => {
+                                if (moment(x.HolidayDate).format('YYYY-MM-DD') == date) {
+                                    exists = true;
+                                    return;
+                                }
+                            })
+                            if (exists) {
+                                request
+                                    .execute("sp_AddLeave")
+                                    .then(function (data, recordsets, returnValue, affected) {
+                                        mssql.close();
+                                        res.send({
+                                            message: "Leave added successfully!",
+                                            success: true,
+                                        });
+                                        mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                    })
+                                    .catch(function (err) {
+                                        console.log(err);
+                                        res.send(err);
+                                    });
+                            } else {
+                                res.send({
+                                    message: "Selected day is not applicable for floating leave.",
+                                    success: false,
+                                });
                             }
-                            // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
-                        })
-                        .catch(function (err) {
+                        }).catch(function (err) {
                             console.log(err);
                             res.send(err);
                         });
+                    } else {
+                        request
+                            .execute("sp_AddLeave")
+                            .then(function (data, recordsets, returnValue, affected) {
+                                mssql.close();
+                                res.send({
+                                    message: "Leave added successfully!",
+                                    success: true,
+                                });
+                                if (diffDays > 2) {
+                                    req.body.leaveId = data.recordset[0].Id;
+                                    addHodApproval(req, res);
+                                }
+                                mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                            })
+                            .catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    }
                 });
             } else {
                 res.status("401");
@@ -105,7 +149,7 @@ function createSchema(app, mssql, pool2) {
                         .query(query)
                         .then(function (data2, recordsets, returnValue, affected) {
                             var mang = [];
-                            for(var x of data2.recordset){
+                            for (var x of data2.recordset) {
                                 mang.push(x.UserId);
                             }
                             var arr = [];
@@ -338,6 +382,7 @@ function createSchema(app, mssql, pool2) {
                             message: "Leave Status Updated successfully!",
                             success: true,
                         });
+                        mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -363,6 +408,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Leave Status Updated successfully!",
                                 success: true,
                             });
+                            mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -389,11 +435,6 @@ function createSchema(app, mssql, pool2) {
                 .execute("sp_deductLeaveBalance")
                 .then(function (data, recordsets, returnValue, affected) {
                     mssql.close();
-                    res.send({
-                        message: "Data retrieved successfully!",
-                        success: true,
-                        response: data.recordset
-                    });
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -410,7 +451,7 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     var query =
                         'select e.*,u.id as userid,u.DisplayName,UserFile.* from EmployeeLeave e left join users u on e.userid=u.id LEFT JOIN UserFile '
-                        + 'ON U.Photo = UserFile.FileId where StartDate<=' + req.query.date + ' and EndDate>=' + req.query.date;
+                        + "ON U.Photo = UserFile.FileId where StartDate<='" + req.query.date + "' and EndDate>='" + req.query.date + "'";
                     console.log(req.query);
                     console.log(query);
                     request

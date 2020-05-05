@@ -35,6 +35,10 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/add-hr-policy', addPolicy);
 
+    app.post('/api/edit-hr-policy', editPolicy);
+
+    app.get('/api/get-hr-policy', getPolicy);
+
     app.get('/api/getprojects', getProjects);
 
     app.get('/api/getuserpersonaldetails', getUserPersonalDetails);
@@ -46,6 +50,8 @@ function createSchema(app, mssql, pool2, fs) {
     app.post('/api/add-edit-usereducationdetails', AddEditUserEducationDetails);
 
     app.post('/api/delete-usereducationdetails', deleteUserEducationDetails);
+
+
 
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -384,11 +390,59 @@ function createSchema(app, mssql, pool2, fs) {
             console.log("valid token");
             if (decodedToken.email) {
                 pool2.then((pool) => {
+                    console.log(req.body)
+                    console.log("addPolicy")
                     var request = pool.request();
-                    var query = 'insert into Policies(Data) values(' + req.body.text + ')';
+                    var query = "insert into Policies(Title,Data) values('" + req.body.Title + "','" + req.body.Data + "')";
                     request.query(query).then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "policy stored", success: true, response: data.recordset });
+                        res.send({ message: "policy stored", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function editPolicy(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.body)
+                    console.log("editPolicy")
+                    var request = pool.request();
+                    var query = "update Policies set Title= '" + req.body.Title + "',Data ='" + req.body.Data +  "' where id = "+req.body.Id;
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "policy update", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getPolicy(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    var query = 'select * from Policies';
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "policy retrieved", success: true, response: data.recordset });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);

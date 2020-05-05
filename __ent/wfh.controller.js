@@ -15,9 +15,11 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/approve-reject-wfh", approveRejectWfh);
 
-    // app.post("/api/add-wfh-task", addTask);
+    app.post("/api/add-wfh-task", addTask);
 
-    // app.post("/api/edit-wfh-task", editTask);
+    app.post("/api/edit-wfh-task", editTask);
+
+    app.post("/api/delete-wfh-task", deleteTask);
 
     function addWfh(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -270,15 +272,20 @@ function createSchema(app, mssql, pool2) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
-                    request.input('projectId', mssql.Int, req.body.projectId);
-                    request.input('userId', mssql.Int, req.body.userId);
-                    request.input("description", mssql.VarChar(4000), req.body.description);
-                    request.input("startTime", mssql.VarChar(100), req.body.startTime);
-                    request.input("endTime", mssql.VarChar(100), req.body.endTime);
-                    request.input('billable', mssql.Int, req.body.billable);
+                    console.log('sp_addTask')
+                    request.input('projectId', mssql.Int, req.body.ProjectId);
+                    request.input('userId', mssql.Int, req.body.UserId);
+                    request.input("description", mssql.VarChar(4000), req.body.Description);
+                    request.input("startTime", mssql.VarChar(100), req.body.StartTime);
+                    request.input("endTime", mssql.VarChar(100), req.body.EndTime);
+                    request.input('billable', mssql.Int, req.body.Billable);
                     request.execute('sp_addTask').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "Task added successfully!" });
+                        res.send({
+                            message: "Task added successfully!",
+                            success: true,
+                            response: data.recordset
+                        });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
@@ -290,21 +297,18 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function addTask(req, res) {
+    function deleteTask(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("Token Valid");
             if (decodedToken.email) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
-                    request.input('projectId', mssql.Int, req.body.projectId);
-                    request.input("description", mssql.VarChar(4000), req.body.description);
-                    request.input("startTime", mssql.VarChar(100), req.body.startTime);
-                    request.input("endTime", mssql.VarChar(100), req.body.endTime);
-                    request.input('billable', mssql.Int, req.body.billable);
-                    request.execute('sp_editTask').then(function (data, recordsets, returnValue, affected) {
+                    console.log('sp_deleteTask')
+                    request.input('Id', mssql.Int, req.body.Id);
+                    request.execute('sp_deleteTask').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "Task added successfully!" });
+                        res.send({ message: "Task delete successfully!" });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
@@ -323,15 +327,20 @@ function createSchema(app, mssql, pool2) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
+                    console.log('sp_editTask')
                     request.input('Id', mssql.Int, req.body.Id);
-                    request.input('projectId', mssql.Int, req.body.projectId);
-                    request.input("description", mssql.VarChar(4000), req.body.description);
-                    request.input("startTime", mssql.VarChar(100), req.body.startTime);
-                    request.input("endTime", mssql.VarChar(100), req.body.endTime);
-                    request.input('billable', mssql.Int, req.body.billable);
+                    request.input('projectId', mssql.Int, req.body.ProjectId);
+                    request.input("description", mssql.VarChar(4000), req.body.Description);
+                    request.input("startTime", mssql.VarChar(100), req.body.StartTime);
+                    request.input("endTime", mssql.VarChar(100), req.body.EndTime);
+                    request.input('billable', mssql.Int, req.body.Billable);
                     request.execute('sp_editTask').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "Task edit successfully!" });
+                        res.send({
+                            message: "Task edit successfully!",
+                            success: true,
+                            response: data.recordset
+                        });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
