@@ -3,7 +3,7 @@ function createSchema(app, mssql, pool2, fs) {
     var jwtToken = require("./jwt.controller");
 
     let upload = require('./multer.config.js');
-    
+
     var async = require("async");
 
     //FILE TYPES
@@ -51,7 +51,9 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/delete-usereducationdetails', deleteUserEducationDetails);
 
+    app.get('/api/getbirthdaylist', getbirthdaylist);
 
+    app.get('/api/getanniversarylist', getanniversarylist);
 
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -59,9 +61,10 @@ function createSchema(app, mssql, pool2, fs) {
             if (decodedToken.email) {
                 pool2.then((pool) => {
                     var request = pool.request();
+                    console.log("sp_GetEmployeePermission");
                     console.log(req.query);
                     request.input('userId', mssql.Int, req.query.userId);
-                    request.execute('sp_GetUserPermission').then(function (data, recordsets, returnValue, affected) {
+                    request.execute('sp_GetEmployeePermission').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "User permissions retrived successfully!", success: true, response: data.recordset });
                     }).catch(function (err) {
@@ -417,7 +420,7 @@ function createSchema(app, mssql, pool2, fs) {
                     console.log(req.body)
                     console.log("editPolicy")
                     var request = pool.request();
-                    var query = "update Policies set Title= '" + req.body.Title + "',Data ='" + req.body.Data +  "' where id = "+req.body.Id;
+                    var query = "update Policies set Title= '" + req.body.Title + "',Data ='" + req.body.Data + "' where id = " + req.body.Id;
                     request.query(query).then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "policy update", success: true });
@@ -628,5 +631,70 @@ function createSchema(app, mssql, pool2, fs) {
             }
         });
     }
+
+    function getbirthdaylist(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log('sp_GetBirthdayList')
+                    var request = pool.request();
+                    request.execute('sp_GetBirthdayList').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Birthday List retrieved successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getanniversarylist(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log('sp_GetAnniversaryList')
+                    var request = pool.request();
+                    request.execute('sp_GetAnniversaryList').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        var records = data.recordset;
+                        var moment = require('moment');
+                        let resp = [];
+                        for (var r of records) {
+                            // let currentdate = moment(new Date());
+                            console.log(r.DOJ)
+                            let currentdate = moment("2020-03-01");
+                            let date = moment(r.DOJ);
+                            console.log(date.get('year') < currentdate.get('year'));
+                            if (date.get('year') < currentdate.get('year')) {
+                                let years = currentdate.get('year') - date.get('year');
+                                date.set('year', currentdate.get('year'));
+                                let diff = date.diff(currentdate, 'days');
+                                console.log(diff);
+                                if (diff < 30) {
+                                    r['years'] = years;
+                                    resp.push(r);
+                                }
+                            }
+                        }
+                        res.send({ message: "Anniversary List retrieved successfully!", success: true, response: resp });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
 }
 module.exports.loadSchema = createSchema;
