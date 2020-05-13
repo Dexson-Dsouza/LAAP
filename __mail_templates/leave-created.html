@@ -19,277 +19,126 @@
         href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700,900,200italic,300italic,400italic,600italic,700italic,900italic"
         rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" />
-    <!--[if mso]>
-        <style>
-            * {
-                font-family: sans-serif !important;
-            }
-        </style>
-    <![endif]-->
-
-
-
-    <!-- CSS Reset : BEGIN -->
-    <style>
-        /* What it does: Remove spaces around the email design added by some email clients. */
-        /* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
-        html,
-        body {
-            margin: 0 auto !important;
-            padding: 0 !important;
-            height: 100% !important;
-            width: 100% !important;
-        }
-
-        /* What it does: Stops email clients resizing small text. */
-        * {
-            -ms-text-size-adjust: 100%;
-            -webkit-text-size-adjust: 100%;
-        }
-
-        /* What it does: Centers email on Android 4.4 */
-        div[style*="margin: 16px 0"] {
-            margin: 0 !important;
-        }
-
-        /* What it does: Stops Outlook from adding extra spacing to tables. */
-        table,
-        td {
-            mso-table-lspace: 0pt !important;
-            mso-table-rspace: 0pt !important;
-        }
-
-        /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
-        table {
-            border-spacing: 0 !important;
-            border-collapse: collapse !important;
-            table-layout: fixed !important;
-            margin: 0 auto !important;
-        }
-
-        table table table {
-            table-layout: auto;
-        }
-
-        /* What it does: Uses a better rendering method when resizing images in IE. */
-        img {
-            -ms-interpolation-mode: bicubic;
-        }
-
-        /* What it does: A work-around for email clients meddling in triggered links. */
-        *[x-apple-data-detectors],
-        /* iOS */
-        .x-gmail-data-detectors,
-        /* Gmail */
-        .x-gmail-data-detectors *,
-        .aBn {
-            border-bottom: 0 !important;
-
-            color: inherit !important;
-            text-decoration: none !important;
-            font-size: inherit !important;
-            font-family: inherit !important;
-            font-weight: inherit !important;
-            line-height: inherit !important;
-        }
-
-        /* What it does: Prevents Gmail from displaying an download button on large, non-linked images. */
-        .a6S {
-            display: none !important;
-            opacity: 0.01 !important;
-        }
-
-        /* If the above doesn't work, add a .g-img class to any image in question. */
-        img.g-img+div {
-            display: none !important;
-        }
-
-        /* What it does: Prevents underlining the button text in Windows 10 */
-        .button-link {
-            text-decoration: none !important;
-        }
-
-        /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
-        /* Create one of these media queries for each additional viewport size you'd like to fix */
-
-        /* iPhone 4, 4S, 5, 5S, 5C, and 5SE */
-        @media only screen and (min-device-width: 320px) and (max-device-width: 374px) {
-            .email-container {
-                min-width: 320px !important;
-            }
-        }
-
-        /* iPhone 6, 6S, 7, 8, and X */
-        @media only screen and (min-device-width: 375px) and (max-device-width: 413px) {
-            .email-container {
-                min-width: 375px !important;
-            }
-        }
-
-        /* iPhone 6+, 7+, and 8+ */
-        @media only screen and (min-device-width: 414px) {
-            .email-container {
-                min-width: 414px !important;
-            }
-        }
-    </style>
-    <!-- CSS Reset : END -->
-
-    <!-- Progressive Enhancements : BEGIN -->
-    <style>
-        /* What it does: Hover styles for buttons */
-        .button-td,
-        .button-a {
-            transition: all 100ms ease-in;
-        }
-
-        .button-td:hover,
-        .button-a:hover {
-            background: #f22a30 !important;
-            border-color: #f22a30 !important;
-        }
-
-        /* Media Queries */
-        @media screen and (max-width: 600px) {
-
-            .email-container {
-                width: 100% !important;
-                margin: auto !important;
-            }
-
-            /* What it does: Forces elements to resize to the full width of their container. Useful for resizing images beyond their max-width. */
-            .fluid {
-                max-width: 100% !important;
-                height: auto !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-            }
-
-            /* What it does: Forces table cells into full-width rows. */
-            .stack-column,
-            .stack-column-center {
-                display: block !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                direction: ltr !important;
-            }
-
-            /* And center justify these ones. */
-            .stack-column-center {
-                text-align: center !important;
-            }
-
-            /* What it does: Generic utility class for centering. Useful for images, buttons, and nested tables. */
-            .center-on-narrow {
-                text-align: center !important;
-                display: block !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-                float: none !important;
-            }
-
-            table.center-on-narrow {
-                display: inline-block !important;
-            }
-
-            /* What it does: Adjust typography on small screens to improve readability */
-            .email-container p {
-                font-size: 17px !important;
-            }
-        }
-    </style>
-    <!-- Progressive Enhancements : END -->
-
-    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
-    <!--[if gte mso 9]>
-    <xml>
-        <o:OfficeDocumentSettings>
-            <o:AllowPNG/>
-            <o:PixelsPerInch>96</o:PixelsPerInch>
-        </o:OfficeDocumentSettings>
-    </xml>
-    <![endif]-->
-
 </head>
 
-<body width="100%" style="margin: 0; mso-line-height-rule: exactly;">
-    <center style="width: 100%; background: #fff; text-align: left;margin: 25px 0;">
+<body>
+    <div id=":5gk" class="ii gt">
+        <div id=":5gj" class="a3s aXjCH msg-7190305179082908742"><u></u>
+            <div bgcolor="#f9f8f3"
+                style="background-color:#f9f8f3;margin:0px;padding:0px;font-family:arial,sans-serif!important">
+                <center>
+                    <table align="center" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+                        <tbody>
+                            <tr>
+                                <td style="text-align:center;padding-top:25px;padding-bottom:25px">
+                                    <a href="http://infinite-usa.com/"> <img
+                                            src="https://infinite-usa.com/wp-content/uploads/2020/01/logo.png"
+                                            alt="Infinite" width="160px"
+                                            style="text-align:center;height: auto; line-height: 140%;" /></a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <table class="m_-7190305179082908742whitebox" align="center" cellpadding="0"
+                                        cellspacing="0" style="background:#ffffff;width:100%;border-radius:11px">
+                                        <tbody>
 
-
-
-        <!-- Email Header : BEGIN -->
-        <table role="presentation" cellspacing="0" cellpadding="10" border="0" align="center" width="600"
-            style="margin: auto; border-left:1px solid #304265; border-right:1px solid #304265;border-top:1px solid #304265;"
-            class="email-container">
-            <tr style="background:#304265;">
-                <td>
-                    <a href="http://infinite-usa.com/"> <img
-                            src="http://careers.infinite-usa.com/assets/images/logo_white.png" alt="Infinite"
-                            width="160px" style="text-align:center;height: auto; line-height: 140%;" /></a>
-                </td>
-            </tr>
-        </table>
-        <!-- Email Header : END -->
-
-        <!-- Email Body : BEGIN -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
-            style="margin: auto; border:1px solid #dddddd;" class="email-container">
-
-            <!-- 1 Column Text + Button : BEGIN -->
-            <tr>
-                <td bgcolor="#ffffff" style="padding: 20px 40px 20px;">
-                    <p
-                        style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 125%; color: #333333; font-weight: normal;">
-                        <strong>Hi Approvers,</strong></p>
-                </td>
-            </tr>
-            <tr>
-                <td bgcolor="#ffffff"
-                    style="padding: 0 40px 20px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 140%; color: #555555;">
-                    <p style="margin: 0;"><strong>"{{username}} </strong>
-                        has applied for leave from <strong>{{from}}</strong> to <strong>{{to}}</strong> .
-                        Please review and approve.</p>
-                </td>
-            </tr>
-            <tr>
-                <td bgcolor="#ffffff"
-                    style="padding: 0 40px 30px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-                    <a href="{{loginLink}}" style="margin: 0;color: #304265;font-weight: 600;">Login to view</a>
-                </td>
-            </tr>
-
-            <tr>
-                <td valign="top" style="padding: 7px 10px;background:#f3f3f3;">
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                        <tr>
-                            <!-- Column : BEGIN -->
-                            <td align="left"
-                                style="padding: 2px;color:#5d5d5d; font-family: Arial, Helvetica, sans-serif;font-size: 11px;">
-                                Copyright © 2020 - Infinite Computing Systems Pvt. Ltd. | All Rights
-                                Reserved.
-                            </td>
-                            <td align="right"
-                                style="font-family: Arial, Helvetica, sans-serif; line-height: 100%; text-align: right;width:100px; mso-line-height: 150%;">
-                                <a href="https://www.facebook.com/infinitecomputingsystems/"><img
-                                        src="http://infinite-usa.com/wp-content/uploads/2018/01/facebook-icon.png" /></a>
-                                <a href="https://twitter.com/infinitecs97"><img
-                                        src="http://infinite-usa.com/wp-content/uploads/2018/01/twitter-icon.png" /></a>
-                                <a href="https://www.linkedin.com/company/infinitecomputingsystems/"> <img
-                                        src="http://infinite-usa.com/wp-content/uploads/2018/01/linkedin-icon.png" /></a>
-                            </td>
-                            <!-- Column : END -->
-                            <!-- Column : BEGIN -->
-                            <!-- Column : END -->
-                        </tr>
+                                            <tr>
+                                                <td style="border-top:1px solid #e7e5d9">
+                                                    <table align="center" cellpadding="0" cellspacing="0"
+                                                        style="width:100%">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td style="width:5%">&nbsp;</td>
+                                                                <td style="width:90%">
+                                                                    <table align="center" cellpadding="0"
+                                                                        cellspacing="0" style="width:100%">
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td class="m_-7190305179082908742welcometext"
+                                                                                    style="padding-top:15px;padding-bottom:19px">
+                                                                                    <p
+                                                                                        style="font-size:16px;line-height:24px;color:#4c4c4c;margin:0 0 4px">
+                                                                                        Hi Approvers,</p>
+                                                                                    <p
+                                                                                        style="font-size:16px;line-height:24px;color:#4c4c4c">
+                                                                                        <strong>{{username}} </strong>
+                                                                                        has applied for leave {{line}}
+                                                                                        Please review and approve.</p>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding-top:40px;padding-bottom:40px">
+                                    <table align="center" cellpadding="0" cellspacing="0"
+                                        style="width:100%;text-align:center">
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <table align="center" cellpadding="0" cellspacing="0"
+                                                        style="width:100px">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td style="padding:0">
+                                                                    <a
+                                                                        href="https://www.facebook.com/infinitecomputingsystems/">
+                                                                        <img src="https://ci4.googleusercontent.com/proxy/sKgK7meCH0qtuWlxlSKt3JCDkQQsTB-ZCg2sVM2KB0vfx0r7dgvLj0EuOgTDXC7YjmCKMOyIMUBYVDAqqfe_YRhmHuGw7DRaq3OZDdhFjnn4bD6yeWVqrJZPV7xdwhu1Cqlpp2O02v3sUbWnQa9KqLvdP5QgO8ApGJU=s0-d-e1-ft#https://gallery.mailchimp.com/b04882716315b66ae7af5b9bb/images/95ee44a7-b841-4b49-893a-2c08f1029c78.png"
+                                                                            alt="facebook"
+                                                                            style="height:25px;vertical-align:top"
+                                                                            class="CToWUd">
+                                                                    </a>
+                                                                </td>
+                                                                <td>
+                                                                    <a href="https://twitter.com/infinitecs97">
+                                                                        <img src="https://ci4.googleusercontent.com/proxy/MA5lXq1LLQQvoAPsKUYxTbzf6Fpc64reXNnw0bl-BJjzVGd5Xp50KOHeXeJai6ivvgi9Vjw0LJJqCsvAb5QgifmqSbEZPopRx9ZDGgW5ApwoJ0NI67fi_ZSXzf-6_TgBTp4-Hbdj-U9HMAnvdooha7OjKW4_xBcbqHc=s0-d-e1-ft#https://gallery.mailchimp.com/b04882716315b66ae7af5b9bb/images/c335cd23-c88d-4e13-8cb1-2997ff40f17b.png"
+                                                                            alt="twitter"
+                                                                            style="height:25px;vertical-align:top"
+                                                                            class="CToWUd">
+                                                                    </a>
+                                                                </td>
+                                                                <td>
+                                                                    <a
+                                                                        href="https://www.linkedin.com/company/infinitecomputingsystems/">
+                                                                        <img src="https://ci4.googleusercontent.com/proxy/M_uqJbkvgGppZITGFtX1hVe3LBYHqsDr-w-Sr1epbp6oW0RXdxJk1TYWyypt3b05vRFhaaC4xnND-LyjYBDfHPeBawD7c7vK7VORTSQ6gpLQnUpiiRv1dJb7eIyiB3bDEuEy_wBzWWuwGz9fnCE-uYjt8H9KZzW6ANI=s0-d-e1-ft#https://gallery.mailchimp.com/b04882716315b66ae7af5b9bb/images/0d9ef6be-ff14-4cc1-8823-b8930fe7717d.png"
+                                                                            alt="linkedin"
+                                                                            style="height:25px;vertical-align:top"
+                                                                            class="CToWUd">
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:0 0 5px">
+                                                    <p style="font-size:12px;line-height:25px;color:#4c4c4c;margin:0">
+                                                        <span style="color:#4c4c4c">Copyright © 2020 - Infinite
+                                                            Computing Systems Pvt. Ltd. | All Rights Reserved</span>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
-                </td>
-            </tr>
-        </table>
-        <!-- Email Footer : END -->
-
-
-
-    </center>
+                </center>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
