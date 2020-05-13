@@ -19,7 +19,7 @@ function createSchema(app, mssql, pool2) {
     thisapp = app;
     thismssql = mssql;
     thispool2 = pool2;
-
+    //GenerateReport();
     app.get('/api/syncdata', syncDataFromWeb);
 }
 
@@ -90,7 +90,7 @@ function transferLog(pool1, logs, emps) {
         thispool2.then((pool) => {
             var request = pool.request();
             var sql;
-            sql = logs.map(item => `(${item.AttendanceLogId}, '${item.AttendanceDate}',${item.EmployeeId},' ${item.InTime}',' ${item.OutTime}',' ${item.PunchRecords}',${item.Present},${item.Absent},' ${item.Status}')`)
+            sql = logs.map(item => `(${item.AttendanceLogId}, '${item.AttendanceDate}',${item.EmployeeId},'${item.InTime}','${item.OutTime}','${item.PunchRecords}',${item.Present},${item.Absent},'${item.Status}')`)
             var finalQuery = "INSERT INTO AttendanceLogs (AttendanceLogId,AttendanceDate,EmployeeId,InTime,OutTime,PunchRecords,Present,Absent,Status) VALUES " + sql
             console.log(finalQuery);
             request.query(finalQuery).then(function (data, recordsets, returnValue, affected) {
@@ -144,6 +144,106 @@ function IncrementLeaveBal() {
             request.query(query).then(function (data, recordsets, returnValue, affected) {
                 thismssql.close();
                 console.log('updated Leave Balance');
+            }, err => {
+                console.log('failed ' + err);
+                thismssql.close();
+            })
+        })
+    })
+}
+
+function GenerateReport() {
+    thispool2.then((pool) => {
+        var request = pool.request();
+        request.query('select * from [Leave_Increment_Monthly]').then(function (data, recordsets, returnValue, affected) {
+            var inc = data.recordset[0].Increase_Factor;
+            var moment = require('moment');
+            var now = moment();
+            now.month(1);
+            now.year(2020);
+            let userId = 1273;
+            var query = 'select Id from Users where employeecode is not null';
+            let year = now.year();
+            let month = now.month();
+            let emp = '5705';
+            request.query(query).then(function (data, recordsets, returnValue, affected) {
+                console.log('data len ' + data.recordset.length);
+                console.log(year, month, userId)
+                request.input('Month', thismssql.Int, month);
+                request.input('Year', thismssql.Int, year);
+                request.input('UserId', thismssql.Int, userId);
+                console.log('sp_GetUserMonthlyReports')
+                request.execute('sp_GetUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
+                    console.log(data.recordset);
+                    let openLB = data.recordset[0].OpeningLB;
+                    var request = pool.request();
+                    console.log('sp_GetEmployeeAttendance')
+                    request.input("year", thismssql.Int, year);
+                    request.input("month", thismssql.Int, month + 1);
+                    request.input("employeeCode", thismssql.VarChar(100), emp);
+                    request
+                        .execute("sp_GetEmployeeAttendance")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            var sum = 0;
+                            var days = 0;
+                            var leaves = 0;
+                            for (var _t of data.recordset) {
+                                if (_t.StatusCode == 'P' || _t.StatusCode == '½P' || _t.StatusCode == 'WFH') {
+                                    days++;
+                                }else if(_t.StatusCode == 'PL'){
+                                    leaves++;
+                                }else if(_t.StatusCode == 'A'){
+                                    days++; 
+                                    leaves++;
+                                }
+                                console.log(moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
+                                sum = sum + (moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
+                            }
+                            console.log('working day ', days);
+                            var sf=((540 * days) - sum);
+                            console.log('extra/shortfall ',sf );
+                            console.log('leaves ',leaves );
+                            var x=0,y=0;
+                            sf=sf+120;
+                            if(sf<0){
+                                sf=sf*(-1);
+                                 x=sf/540;
+                                 y=sf%540;
+                                if(y>0){
+                                    x=x+0.5;
+                                }
+                            }
+                            var total=leaves+x;
+                            var closeLB=0,LWP=0;             
+                            if(total>=openLB){
+                                closeLB=0;
+                                LWP=total-openLB;
+                            }else{
+                                closeLB=openLB-total;
+                                LWP=0;
+                            }
+                            let obj={
+                                'month':month,
+                                'year':year,
+                                'userid':userId,
+                                "OpeningLB":openLB,
+                                'leavetaken':leaves,
+                                'sf':sf,
+                                'leaveduetosf':x,
+                                "totalleave":total,
+                                'lwp':LWP,
+                                'closingLB':closeLB
+                            }
+                            console.log(obj);
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                }, err => {
+                    console.log('failed ' + err);
+                    thismssql.close();
+                })
             }, err => {
                 console.log('failed ' + err);
                 thismssql.close();
@@ -469,7 +569,32 @@ function getAdLastSync(req, res) {
         }
     });
 }
+
+function trans(pool1) {
+    var request = pool1.request();
+    request.query('select * FROM [APP93].[dbo].[AttendanceLogs] where EmployeeId=7445').then(function (data, recordsets, returnValue, affected) {
+        console.log('adding ' + data.recordset.length + ' logs')
+        var logs = data.recordset;
+        thispool2.then((pool) => {
+            var request2 = pool.request();
+            var sql;
+            var moment = require('moment');
+            sql = logs.map(item => `(${item.AttendanceLogId},'`+ moment(item.AttendanceDate).format('YYYY-MM-DD HH:mm:ss')+ `',${item.EmployeeId},'${item.InTime}','${item.OutTime}','${item.PunchRecords}',${item.Present},${item.Absent},'${item.Status}','${item.StatusCode}')`)
+            var finalQuery = "INSERT INTO AttendanceLogs (AttendanceLogId,AttendanceDate,EmployeeId,InTime,OutTime,PunchRecords,Present,Absent,Status,StatusCode) VALUES " + sql
+            console.log(finalQuery);
+            request2.query(finalQuery).then(function (data, recordsets, returnValue, affected) {
+                console.log('inserted');
+            }, err => {
+                console.log('failed' + err);
+            })
+        })
+    }, err => {
+        console.log('failed' + err);
+        transferEmployee(pool1, emps);
+    })
+}
+
 module.exports.loadSchema = createSchema;
 exports.connectToDatabase2 = connectToDatabase2;
-exports.IncrementLeaveBal = IncrementLeaveBal;
+exports.GenerateReport = GenerateReport;
 exports.syncData = syncData;

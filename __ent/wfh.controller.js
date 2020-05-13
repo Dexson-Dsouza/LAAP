@@ -1,7 +1,7 @@
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
 
-    //  var mailer = require("./mail.controller.js");
+    var mailer = require("./mail.controller.js");
 
     var async = require("async");
 
@@ -15,11 +15,14 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/approve-reject-wfh", approveRejectWfh);
 
-    app.post("/api/add-wfh-task", addTask);
+    app.post("/api/add-wfh-task", addTasks);
 
     app.post("/api/edit-wfh-task", editTask);
 
     app.post("/api/delete-wfh-task", deleteTask);
+
+    app.get("/api/get-wfh-tasklist", getTasks);
+
 
     function addWfh(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -43,7 +46,7 @@ function createSchema(app, mssql, pool2) {
                                 success: true,
                                 response: data.recordset
                             });
-                            // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
+                            // mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -165,7 +168,7 @@ function createSchema(app, mssql, pool2) {
             request.input("userId", mssql.Int, parseInt(req.body.userId));
             request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
             request.input("status", mssql.Int, parseInt(req.body.status));
-
+            request.input("reason", mssql.VarChar(4000), req.body.reason)
             request
                 .execute("sp_ApproveRejectWfh")
                 .then(function (data, recordsets, returnValue, affected) {
@@ -198,6 +201,7 @@ function createSchema(app, mssql, pool2) {
                         message: "Wfh Status Updated successfully!",
                         success: true,
                     });
+                    // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -223,6 +227,7 @@ function createSchema(app, mssql, pool2) {
                             message: "Wfh Status Updated successfully!",
                             success: true,
                         });
+                        // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -248,6 +253,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Wfh Status Updated successfully!",
                                 success: true,
                             });
+                            // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -265,7 +271,48 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function addTask(req, res) {
+    function addTasks(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("Token Valid");
+            if (decodedToken.email) {
+                console.log(req.body.TaskList);
+                console.log('sp_addTasks')
+                var someArray = req.body.TaskList
+                var arrayWithIndx = someArray.map(function (e, i) { return { obj: e, index: i } });
+                console.log(arrayWithIndx);
+                async.eachSeries(arrayWithIndx, function (member, callback) {
+                    pool2.then((pool) => {
+                        var request = pool.request();
+                        console.log(member);
+                        request.input('projectId', mssql.Int, member.obj.ProjectId);
+                        request.input('userId', mssql.Int, member.obj.UserId);
+                        request.input("description", mssql.VarChar(4000), member.obj.Description);
+                        request.input("startTime", mssql.VarChar(100), member.obj.StartTime);
+                        request.input("endTime", mssql.VarChar(100), member.obj.EndTime);
+                        request.input('billable', mssql.Int, member.obj.Billable);
+                        request.input('hours', mssql.Int, member.obj.Hours);
+                        request.execute('sp_addTask').then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            console.log("Index ==>", member.index);
+                            if (member.index == (someArray.length - 1)) {
+                                console.log("in if");
+                                res.send({ message: "TaskList added successfully!" });
+                            } else {
+                                console.log("in else");
+                                callback();
+                            }
+                        }).catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                            callback();
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    function addSingleTask(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("Token Valid");
             if (decodedToken.email) {
@@ -338,6 +385,34 @@ function createSchema(app, mssql, pool2) {
                         mssql.close();
                         res.send({
                             message: "Task edit successfully!",
+                            success: true,
+                            response: data.recordset
+                        });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                        callback();
+                    });
+                });
+
+            }
+        });
+    }
+
+    function getTasks(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("Token Valid");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    console.log('sp_getTaskList')
+                    request.input('UserId', mssql.Int, req.query.UserId);
+                    request.input("Date", mssql.VarChar(100), req.query.Date);
+                    request.execute('sp_getTaskList').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({
+                            message: "Task List Retrieved successfully!",
                             success: true,
                             response: data.recordset
                         });

@@ -1,7 +1,7 @@
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
 
-    //  var mailer = require("./mail.controller.js");
+    var mailer = require("./mail.controller.js");
 
     var async = require("async");
 
@@ -9,12 +9,46 @@ function createSchema(app, mssql, pool2) {
 
     app.get("/api/employee-attendance", getAttendanceForEmployee);
 
+    app.get("/api/employee-attendance-by-id", getAttendanceById);
+
     app.post("/api/regularize-attendance", regularize);
 
     app.get('/api/get-regularize-requests', getRegularizeReq);
 
     app.post("/api/approve-reject-regularize-requests", approveRejectRegularizeReq);
 
+    app.get("/api/checkif-regularize-exists", regularizeExists);
+
+    function getAttendanceById(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    console.log('sp_GetEmployeeAttendanceById')
+                    request.input("Id", mssql.Int, req.query.Id);
+                    request
+                        .execute("sp_GetEmployeeAttendanceById")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
 
     function getAttendanceForEmployee(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -73,7 +107,7 @@ function createSchema(app, mssql, pool2) {
                     request.input("EmployeeCode", mssql.VarChar(100), req.body.EmployeeCode);
                     request.input("details", mssql.VarChar(100), req.body.details);
                     request.input("Status", mssql.Int, parseInt(req.body.status));
-
+                    request.input("createdDate", mssql.VarChar(100), req.body.CreatedDate);
                     request
                         .execute("sp_EditEmployeeAttendance")
                         .then(function (data, recordsets, returnValue, affected) {
@@ -82,7 +116,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Edit request added successfully!",
                                 success: true,
                             });
-                            // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
+                            //mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -145,7 +179,8 @@ function createSchema(app, mssql, pool2) {
                     request.input("a", mssql.Float, parseFloat(req.body.Absent));
                     request.input("punchRecord", mssql.VarChar(100), req.body.punchRecord);
                     request.input("s", mssql.VarChar(100), req.body.Status);
-
+                    request.input("approvedBy", mssql.Int, parseInt(req.body.approvedBy));
+                    request.input("reason", mssql.VarChar(4000), req.body.reason)
                     request
                         .execute("sp_ApproveRejectRegularizeRequest")
                         .then(function (data, recordsets, returnValue, affected) {
@@ -154,7 +189,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "request status changed successfully!",
                                 success: true,
                             });
-                            // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
+                            // mailer.sendMailAfterRegReqApprove(req.body.trackId, req.body.AttendanceDate,req.body.approved);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -189,5 +224,34 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
+    function regularizeExists(req, res) {
+        pool2.then(pool => {
+            var request = pool.request();
+            var query = "SELECT * FROM [AttendanceLogsUpdates] where AttendanceLogId =" + req.query.AttendanceLogId
+            console.log(query);
+            request
+                .query(query)
+                .then(function (data, recordsets, returnValue, affected) {
+                    mssql.close();
+                    if (typeof (data.recordset[0]) != "undefined") {
+                        res.send({
+                            message: "Record  Exist",
+                            success: true,
+                            response: { alreadyRegularize: true }
+                        });
+                    } else {
+                        res.send({
+                            message: "Record Doesnot Exist",
+                            success: false,
+                            response: { alreadyRegularize: false }
+                        });
+                    }
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        });
+    }
 }
 module.exports.loadSchema = createSchema;

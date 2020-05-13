@@ -67,7 +67,7 @@ function connectToDatabase() {
   var config = {
     user: "sa",
     password: "Infinite123#",
-    server: "INMDCS43873\\MSSQLSERVER14",
+    server: "192.168.1.55",
     port: 1433,
     database: "Infinite_L&A_v1",
     options: {

@@ -55,6 +55,8 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.get('/api/getanniversarylist', getanniversarylist);
 
+    app.get('/api/getuserreports', getuserreports);
+
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("valid token");
@@ -136,7 +138,7 @@ function createSchema(app, mssql, pool2, fs) {
                     request.input('userId', mssql.Int, req.query.userId);
                     request.execute('sp_GetEmployeeTeamDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
-                        res.send({ message: "User data retrieved successfully!", success: true, response: data.recordset[0] });
+                        res.send({ message: "User data retrieved successfully!", success: true, response: data.recordset });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
@@ -668,22 +670,48 @@ function createSchema(app, mssql, pool2, fs) {
                         let resp = [];
                         for (var r of records) {
                             // let currentdate = moment(new Date());
-                            console.log(r.DOJ)
+                            // console.log(r.DOJ)
                             let currentdate = moment("2020-03-01");
                             let date = moment(r.DOJ);
-                            console.log(date.get('year') < currentdate.get('year'));
+                            //console.log(date.get('year') < currentdate.get('year'));
                             if (date.get('year') < currentdate.get('year')) {
                                 let years = currentdate.get('year') - date.get('year');
                                 date.set('year', currentdate.get('year'));
                                 let diff = date.diff(currentdate, 'days');
                                 console.log(diff);
-                                if (diff < 30) {
+                                if (diff < 30 && diff > 0) {
                                     r['years'] = years;
                                     resp.push(r);
                                 }
                             }
                         }
                         res.send({ message: "Anniversary List retrieved successfully!", success: true, response: resp });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getuserreports(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.query);
+                    console.log('sp_GetUserMonthlyReports');
+                    var request = pool.request();
+                    request.input('Month', mssql.Int, req.query.Month);
+                    request.input('Year', mssql.Int, req.query.Year);
+                    request.input('UserId', mssql.Int, req.query.UserId);
+                    request.execute('sp_GetUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Reports retrieved successfully!", success: true, response: data.recordset });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);

@@ -59,6 +59,7 @@ function createSchema(app, mssql, pool2) {
                     request.input("startDate", mssql.VarChar(100), req.body.startDate);
                     request.input("endDate", mssql.VarChar(100), req.body.endDate);
                     request.input("halfDay", mssql.Int, parseInt(req.body.halfDay));
+                    request.input("isRegularize", mssql.Int, (req.body.isRegularize));
                     var oneDay = 24 * 60 * 60 * 1000;
                     var startDate = new Date(req.body.startDate);
                     var endDate = new Date(req.body.endDate);
@@ -91,7 +92,7 @@ function createSchema(app, mssql, pool2) {
                                             message: "Leave added successfully!",
                                             success: true,
                                         });
-                                        mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                        // mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
                                     })
                                     .catch(function (err) {
                                         console.log(err);
@@ -120,7 +121,7 @@ function createSchema(app, mssql, pool2) {
                                     req.body.leaveId = data.recordset[0].Id;
                                     addHodApproval(req, res);
                                 }
-                                mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                // mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
                             })
                             .catch(function (err) {
                                 console.log(err);
@@ -238,8 +239,12 @@ function createSchema(app, mssql, pool2) {
                     request.input("year", mssql.Int, req.query.year);
                     request.input("fromdate", mssql.VarChar(100), req.query.fromdate);
                     request.input("todate", mssql.VarChar(100), req.query.todate);
-                    request.input("limit", mssql.Int, req.query.limit);
-                    request.input("page", mssql.Int, req.query.page);
+                    if (req.query.limit) {
+                        request.input("limit", mssql.Int, req.query.limit);
+                    }
+                    if (req.query.page) {
+                        request.input("page", mssql.Int, req.query.page);
+                    }
                     if (req.query.category != '') {
                         request.input("category", mssql.Int, req.query.category);
                     }
@@ -323,7 +328,7 @@ function createSchema(app, mssql, pool2) {
             request.input("userId", mssql.Int, parseInt(req.body.userId));
             request.input("leaveId", mssql.Int, parseInt(req.body.leaveId));
             request.input("status", mssql.Int, parseInt(req.body.status));
-
+            request.input("reason", mssql.VarChar(4000), req.body.reason)
             request
                 .execute("sp_ApproveRejectLeave")
                 .then(function (data, recordsets, returnValue, affected) {
@@ -356,6 +361,7 @@ function createSchema(app, mssql, pool2) {
                         message: "Leave Status Updated successfully!",
                         success: true,
                     });
+                    // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -382,7 +388,8 @@ function createSchema(app, mssql, pool2) {
                             message: "Leave Status Updated successfully!",
                             success: true,
                         });
-                        mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
+                        checkForRegularize(req.body.leaveId);
+                        // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -408,7 +415,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Leave Status Updated successfully!",
                                 success: true,
                             });
-                            mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
+                            // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -526,6 +533,44 @@ function createSchema(app, mssql, pool2) {
                 .then(function (data, recordsets, returnValue, affected) {
                     mssql.close();
                     console.log('done');
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        })
+    }
+
+    function checkForRegularize(leaveId) {
+        pool2.then(pool => {
+            console.log("checkForRegularize");
+            console.log(leaveId)
+            var request = pool.request();
+            var query = "select * from EmployeeLeave where Id =" + leaveId;
+            request
+                .query(query)
+                .then(function (data, recordsets, returnValue, affected) {
+                    var leave = data.recordset[0];
+                    console.log(leave);
+                    if (leave.isRegularize == 1) {
+                        console.log('regularize');
+                        request.input("AttendanceDate", mssql.DateTime, leave.StartDate)
+                        request.input("UserId", mssql.Int, parseInt(leave.Userid));
+                        request.input("Status", mssql.VarChar(4000), " On Leave(PL)")
+                        request.input("StatusCode", mssql.VarChar(4000), "PL")
+                        request
+                            .execute("sp_updateAttendanceStatus")
+                            .then(function (data, recordsets, returnValue, affected) {
+                                mssql.close();
+                                console.log('changed attendance status');
+                            })
+                            .catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    } else if (leave.isRegularize == 0) {
+                        console.log('not regularize')
+                    }
                 })
                 .catch(function (err) {
                     console.log(err);
