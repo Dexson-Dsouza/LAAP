@@ -111,12 +111,12 @@ function createSchema(app, mssql, pool2) {
                     request
                         .execute("sp_EditEmployeeAttendance")
                         .then(function (data, recordsets, returnValue, affected) {
+                            mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
                             mssql.close();
                             res.send({
                                 message: "Edit request added successfully!",
                                 success: true,
                             });
-                            //mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -147,7 +147,6 @@ function createSchema(app, mssql, pool2) {
                                 success: true,
                                 response: data.recordset
                             });
-                            // mailer.sendMailAfterJobAdd(req.body.postedBy, data.recordset[0].Id);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -189,7 +188,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "request status changed successfully!",
                                 success: true,
                             });
-                            // mailer.sendMailAfterRegReqApprove(req.body.trackId, req.body.AttendanceDate,req.body.approved);
+                            mailer.sendMailAfterRegReqApprove(req.body.trackId, req.body.AttendanceDate, req.body.approved);
                         })
                         .catch(function (err) {
                             console.log(err);
