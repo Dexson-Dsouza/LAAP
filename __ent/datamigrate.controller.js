@@ -68,7 +68,7 @@ function sync(pool1) {
                             var empId = data2.recordset[0].EmployeeId;
                             request2.query('select * from AttendanceLogs where AttendanceLogId > ' + logId).then(function (data, recordsets, returnValue, affected) {
                                 request2.query('select * from Employees where EmployeeId > ' + empId).then(function (data2, recordsets, returnValue, affected) {
-                                    transferLog(pool1, data.recordsets, data2.recordsets);
+                                    transferLog(pool1, data.recordsets, data2.recordsets,logId);
                                 })
                             }).catch(function (err) {
                                 console.log(err);
@@ -84,7 +84,7 @@ function sync(pool1) {
 
 }
 
-function transferLog(pool1, logs, emps) {
+function transferLog(pool1, logs, emps,topId) {
     if (logs.length > 0) {
         console.log('adding ' + logs.length + ' logs')
         thispool2.then((pool) => {
@@ -95,6 +95,7 @@ function transferLog(pool1, logs, emps) {
             console.log(finalQuery);
             request.query(finalQuery).then(function (data, recordsets, returnValue, affected) {
                 console.log('inserted');
+                updateLogs(topId);
                 transferEmployee(pool1, emps);
             }, err => {
                 console.log('failed' + err);
@@ -105,7 +106,33 @@ function transferLog(pool1, logs, emps) {
         transferEmployee(pool1, emps);
     }
 }
-
+function updateLogs(topId){
+    thispool2.then((pool) => {
+        var request1 = pool.request();
+        var query='select * from AttendanceLogs where AttendanceLogId > '+topId;
+        request1.query(query)
+            .then(function (data, recordsets, returnValue, affected) {
+                async.eachSeries(data.recordset,(x,callback)=>{
+                    var rq = pool.request();
+                    rq.input("AttendanceLogId", thismssql.Int, x.AttendanceLogId);
+                    rq.input("AttendanceDate", thismssql.Int, x.AttendanceDate);
+                    rq.input("empId", thismssql.Int, x.EmployeeId);
+                    rq.execute("sp_updateLog").then(function (data, recordsets, returnValue, affected) {
+                        callback();
+                    }).catch(function (err) {
+                        callback();
+                        console.log(err);
+                    })
+                },()=>{
+                    thismssql.close();
+                    console.log('done updating');
+                })
+            }).catch(function (err) {
+                console.log(err);
+                res.send(err);
+            });
+    })
+}
 function transferEmployee(pool1, emps) {
     if (emps.length > 0) {
         console.log('adding ' + emps.length + 'new employee')
@@ -159,90 +186,115 @@ function GenerateReport() {
             var inc = data.recordset[0].Increase_Factor;
             var moment = require('moment');
             var now = moment();
-            now.month(1);
-            now.year(2020);
-            let userId = 1273;
-            var query = 'select Id from Users where employeecode is not null';
+            var query = 'select Id,EmployeeCode from Users where employeecode is not null';
             let year = now.year();
-            let month = now.month();
-            let emp = '5705';
+            let month = now.format('M');
             request.query(query).then(function (data, recordsets, returnValue, affected) {
                 console.log('data len ' + data.recordset.length);
-                console.log(year, month, userId)
-                request.input('Month', thismssql.Int, month);
-                request.input('Year', thismssql.Int, year);
-                request.input('UserId', thismssql.Int, userId);
-                console.log('sp_GetUserMonthlyReports')
-                request.execute('sp_GetUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
-                    console.log(data.recordset);
-                    let openLB = data.recordset[0].OpeningLB;
-                    var request = pool.request();
-                    console.log('sp_GetEmployeeAttendance')
-                    request.input("year", thismssql.Int, year);
-                    request.input("month", thismssql.Int, month + 1);
-                    request.input("employeeCode", thismssql.VarChar(100), emp);
-                    request
-                        .execute("sp_GetEmployeeAttendance")
-                        .then(function (data, recordsets, returnValue, affected) {
-                            var sum = 0;
-                            var days = 0;
-                            var leaves = 0;
-                            for (var _t of data.recordset) {
-                                if (_t.StatusCode == 'P' || _t.StatusCode == '½P' || _t.StatusCode == 'WFH') {
-                                    days++;
-                                }else if(_t.StatusCode == 'PL'){
-                                    leaves++;
-                                }else if(_t.StatusCode == 'A'){
-                                    days++; 
-                                    leaves++;
+                async.eachSeries(data.recordset , (__d ,callback )=>{
+                    let userId = __d.Id;
+                    let emp = __d.EmployeeCode;
+                   // console.log(year, month, userId)
+                    request.input('Month', thismssql.Int, month-1);
+                    request.input('Year', thismssql.Int, year);
+                    request.input('UserId', thismssql.Int, userId);
+                   // console.log('sp_GetUserMonthlyReports')
+                    request.execute('sp_GetUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
+                       // console.log(data.recordset);
+                        let openLB = data.recordset[0].OpeningLB;
+                        var request = pool.request();
+                       // console.log('sp_GetEmployeeAttendance')
+                        request.input("year", thismssql.Int, year);
+                        request.input("month", thismssql.Int, month);
+                        request.input("employeeCode", thismssql.VarChar(100), emp);
+                        request
+                            .execute("sp_GetEmployeeAttendance")
+                            .then(function (data, recordsets, returnValue, affected) {
+                                var sum = 0;
+                                var days = 0;
+                                var leaves = 0;
+                                for (var _t of data.recordset) {
+                                    if (_t.StatusCode == 'P' || _t.StatusCode == '½P' || _t.StatusCode == 'WFH') {
+                                        days++;
+                                    }else if(_t.StatusCode == 'PL'){
+                                        leaves++;
+                                    }else if(_t.StatusCode == 'A'){
+                                        days++; 
+                                        leaves++;
+                                    }
+                                   // console.log(540-moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
+                                    sum = sum + (moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
                                 }
-                                console.log(moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
-                                sum = sum + (moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
-                            }
-                            console.log('working day ', days);
-                            var sf=((540 * days) - sum);
-                            console.log('extra/shortfall ',sf );
-                            console.log('leaves ',leaves );
-                            var x=0,y=0;
-                            sf=sf+120;
-                            if(sf<0){
-                                sf=sf*(-1);
-                                 x=sf/540;
-                                 y=sf%540;
-                                if(y>0){
-                                    x=x+0.5;
+                               // console.log('working day ', days);
+                                var sf=((540 * days) - sum);
+                               // console.log('extra/shortfall ',sf );
+                               // console.log('leaves ',leaves );
+                                var x=0,y=0;
+                                sf=sf+120;
+                                if(sf<0){
+                                    sf=sf*(-1);
+                                    x=sf/540;
+                                    y=sf%540;
+                                    if(y>0){
+                                        x=x+0.5;
+                                    }
+                                }else if(sf >=0){
+                                    sf=0;
                                 }
-                            }
-                            var total=leaves+x;
-                            var closeLB=0,LWP=0;             
-                            if(total>=openLB){
-                                closeLB=0;
-                                LWP=total-openLB;
-                            }else{
-                                closeLB=openLB-total;
-                                LWP=0;
-                            }
-                            let obj={
-                                'month':month,
-                                'year':year,
-                                'userid':userId,
-                                "OpeningLB":openLB,
-                                'leavetaken':leaves,
-                                'sf':sf,
-                                'leaveduetosf':x,
-                                "totalleave":total,
-                                'lwp':LWP,
-                                'closingLB':closeLB
-                            }
-                            console.log(obj);
-                        })
-                        .catch(function (err) {
-                            console.log(err);
-                            res.send(err);
-                        });
-                }, err => {
-                    console.log('failed ' + err);
+                                var total=leaves+x;
+                                var closeLB=0,LWP=0;             
+                                if(total>=openLB){
+                                    closeLB=0;
+                                    LWP=total-openLB;
+                                }else{
+                                    closeLB=openLB-total;
+                                    LWP=0;
+                                }
+                                let obj={
+                                    'month':month,
+                                    'year':year,
+                                    'userid':userId,
+                                    "OpeningLB":openLB,
+                                    'leavetaken':leaves,
+                                    'sf':sf,
+                                    'leaveduetosf':x,
+                                    "totalleave":total,
+                                    'lwp':LWP,
+                                    'closingLB':closeLB+inc
+                                }
+                             //   console.log(obj);
+                                var request = pool.request();
+                              //  console.log('sp_addUserMonthlyReport')
+                                request.input("year", thismssql.Int, year);
+                                request.input("month", thismssql.Int, month);
+                                request.input("UserId", thismssql.Int, userId);
+                                request.input("OpeningLB", thismssql.Float, openLB);
+                                request.input("LeaveTaken", thismssql.Float, leaves);
+                                request.input("Shortfall", thismssql.Float, sf);
+                                request.input("LeaveDueToShortfall", thismssql.Float, x);
+                                request.input("TotalLeave", thismssql.Float, total);
+                                request.input("LWP", thismssql.Float, LWP);
+                                request.input("ClosingLB", thismssql.Float, closeLB+inc);
+                                request
+                                    .execute("sp_addUserMonthlyReport")
+                                    .then(function (data, recordsets, returnValue, affected) {
+                                        callback();
+                                    })
+                                    .catch(function (err) {
+                                        console.log("error in sp_addUserMonthlyReport"+err);
+                                        callback();
+                                    });
+                            })
+                            .catch(function (err) {
+                                console.log('error in sp_GetEmployeeAttendance'+err);
+                            });
+                    }, err => {
+                        console.log('sp_GetUserMonthlyReports failed ' + err);
+                        thismssql.close();
+                    })
+                },()=>{
                     thismssql.close();
+                    console.log('all records updated')
                 })
             }, err => {
                 console.log('failed ' + err);
