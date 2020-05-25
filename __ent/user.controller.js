@@ -49,6 +49,10 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/add-edit-usereducationdetails', AddEditUserEducationDetails);
 
+    app.get('/api/get-profile-change-for-approval', getProfileChanges);
+
+    app.post('/api/approve-reject-profile-changes', ApproveRejProfileChanges);
+
     app.post('/api/delete-usereducationdetails', deleteUserEducationDetails);
 
     app.get('/api/getbirthdaylist', getbirthdaylist);
@@ -65,6 +69,14 @@ function createSchema(app, mssql, pool2, fs) {
                     var request = pool.request();
                     console.log("sp_GetEmployeePermission");
                     console.log(req.query);
+                    if (isNaN(parseInt(req.query.userId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('userId', mssql.Int, req.query.userId);
                     request.execute('sp_GetEmployeePermission').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
@@ -112,6 +124,14 @@ function createSchema(app, mssql, pool2, fs) {
                 pool2.then((pool) => {
                     console.log('sp_GetEmployeeDetails')
                     var request = pool.request();
+                    if (isNaN(parseInt(req.query.userId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid userId",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('userId', mssql.Int, req.query.userId);
                     request.execute('sp_GetEmployeeDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
@@ -133,7 +153,15 @@ function createSchema(app, mssql, pool2, fs) {
             console.log("valid token");
             if (decodedToken.email) {
                 pool2.then((pool) => {
-                    console.log('sp_GetEmployeeTeamDetails')
+                    console.log('sp_GetEmployeeTeamDetails');
+                    if (isNaN(parseInt(req.query.userId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     request.input('userId', mssql.Int, req.query.userId);
                     request.execute('sp_GetEmployeeTeamDetails').then(function (data, recordsets, returnValue, affected) {
@@ -420,7 +448,15 @@ function createSchema(app, mssql, pool2, fs) {
             if (decodedToken.email) {
                 pool2.then((pool) => {
                     console.log(req.body)
-                    console.log("editPolicy")
+                    console.log("editPolicy");
+                    if (isNaN(parseInt(req.body.Id))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     var query = "update Policies set Title= '" + req.body.Title + "',Data ='" + req.body.Data + "' where id = " + req.body.Id;
                     request.query(query).then(function (data, recordsets, returnValue, affected) {
@@ -489,9 +525,18 @@ function createSchema(app, mssql, pool2, fs) {
             console.log("valid token");
             if (decodedToken.email) {
                 pool2.then((pool) => {
-                    console.log('sp_GetUserPersonalDetails')
+                    console.log('sp_GetUserPersonalDetails');
+                    if (isNaN(parseInt(req.query.userId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     request.input('userId', mssql.Int, req.query.userId);
+                    request.input('email', mssql.VarChar(100), decodedToken.email);
                     request.execute('sp_GetUserPersonalDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "User data retrieved successfully!", success: true, response: data.recordset });
@@ -514,6 +559,14 @@ function createSchema(app, mssql, pool2, fs) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
+                    if (isNaN(parseInt(req.body.UserId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     console.log("sp_AddEditUserPersonalDetails");
                     request.input('userId', mssql.VarChar(2000), req.body.UserId);
                     request.input('secondary', mssql.VarChar(2000), req.body.SecondaryNo);
@@ -544,9 +597,18 @@ function createSchema(app, mssql, pool2, fs) {
             console.log("valid token");
             if (decodedToken.email) {
                 pool2.then((pool) => {
-                    console.log('sp_GetUserEducationDetails')
+                    console.log('sp_GetUserEducationDetails');
+                    if (isNaN(parseInt(req.query.userId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     request.input('userId', mssql.Int, req.query.userId);
+                    request.input('email', mssql.VarChar(100), decodedToken.email);
                     request.execute('sp_GetUserEducationDetails').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "User data retrieved successfully!", success: true, response: data.recordset });
@@ -572,6 +634,14 @@ function createSchema(app, mssql, pool2, fs) {
                 console.log(arrayWithIndx);
                 async.eachSeries(arrayWithIndx, function (member, callback) {
                     pool2.then((pool) => {
+                        if (isNaN(parseInt(member.obj.UserId))) {
+                            res.status("400");
+                            res.send({
+                                message: "invalid parameters",
+                                success: false,
+                            });
+                            return;
+                        }
                         var request = pool.request();
                         console.log(member);
                         request.input('userId', mssql.Int, member.obj.UserId);
@@ -610,6 +680,14 @@ function createSchema(app, mssql, pool2, fs) {
                 console.log(arrayWithIndx);
                 async.eachSeries(arrayWithIndx, function (member, callback) {
                     pool2.then((pool) => {
+                        if (isNaN(parseInt(member.obj.Id))) {
+                            res.status("400");
+                            res.send({
+                                message: "invalid parameters",
+                                success: false,
+                            });
+                            return;
+                        }
                         var request = pool.request();
                         console.log(member);
                         request.input('id', mssql.VarChar(2000), member.obj.Id);
@@ -678,7 +756,7 @@ function createSchema(app, mssql, pool2, fs) {
                                 let years = currentdate.get('year') - date.get('year');
                                 date.set('year', currentdate.get('year'));
                                 let diff = date.diff(currentdate, 'days');
-                                console.log(diff);
+                                // console.log(diff);
                                 if (diff < 30 && diff > 0) {
                                     r['years'] = years;
                                     resp.push(r);
@@ -705,6 +783,16 @@ function createSchema(app, mssql, pool2, fs) {
                 pool2.then((pool) => {
                     console.log(req.query);
                     console.log('sp_GetUserMonthlyReports');
+                    if (isNaN(parseInt(req.query.Month))
+                        || isNaN(parseInt(req.query.Year))
+                        || (req.query.UserId != undefined && isNaN(parseInt(req.query.UserId)))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     request.input('Month', mssql.Int, req.query.Month);
                     request.input('Year', mssql.Int, req.query.Year);
@@ -722,6 +810,108 @@ function createSchema(app, mssql, pool2, fs) {
                 res.send(invalidRequestError);
             }
         });
+    }
+
+    function getProfileChanges(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log('sp_GetPendingProfileDataApprovals')
+                    var request = pool.request();
+                    var resp = [];
+                    request.execute('sp_GetPendingProfileDataApprovals').then(function (data, recordsets, returnValue, affected) {
+                        var request = pool.request();
+                        var _p = [];
+                        _p = data.recordset;
+                        request.execute('sp_GetPendingEducationDataApprovals').then(function (data, recordsets, returnValue, affected) {
+                            var _e = [];
+                            _e = data.recordset;
+                            console.log(_p);
+                            console.log(_e);
+                            var m = new Map()
+                            _p.forEach(x => {
+                                m.set(x.UserId, { personalDetail: x, education: [] });
+                            })
+                            _e.forEach((x) => {
+                                if (m.has(x.UserId)) {
+                                    console.log(m.get(x.UserId))
+                                    m.get(x.UserId).education.push(x);
+                                } else {
+                                    m.set(x.UserId, { 'education': [] });
+                                    m.get(x.UserId).education.push(x);
+                                }
+                            })
+                            mssql.close();
+                            res.send({
+                                message: "Pending changes retrieved successfully!", success: true, response: [...m.values()]
+                            });
+                        })
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function ApproveRejProfileChanges(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    request.input('Status', mssql.Int, req.body.Status);
+                    request.input('UserId', mssql.Int, req.body.UserId);
+                    var education = [];
+                    education = req.body.EducationDetails;
+                    if (req.body.Status) {
+                        console.log("sp_updateProfileChanges");
+                        request.execute('sp_updateProfileChanges').then(function (data, recordsets, returnValue, affected) {
+                            async.eachSeries(education, (_x, callback) => {
+                                var request = pool.request();
+                                request.input('Status', mssql.Int, _x.Status);
+                                request.input('Id', mssql.Int, _x.Id);
+                                console.log('sp_updateEducationChanges')
+                                request.execute('sp_updateEducationChanges').then(function (data, recordsets, returnValue, affected) {
+                                    callback();
+                                }).catch(function (err) {
+                                    console.log(err);
+                                    callback();
+                                });
+                            }, () => {
+                                mssql.close();
+                                res.send({ message: "Profile updated successfully!", success: true });
+                            })
+                        }).catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                    }
+                    else {
+                        async.eachSeries(education, (_x, callback) => {
+                            var request = pool.request();
+                            request.input('Status', mssql.Int, _x.Status);
+                            request.input('Id', mssql.Int, _x.Id);
+                            console.log('sp_updateEducationChanges')
+                            request.execute('sp_updateEducationChanges').then(function (data, recordsets, returnValue, affected) {
+                                callback();
+                            }).catch(function (err) {
+                                console.log(err);
+                                callback();
+                            });
+                        }, () => {
+                            mssql.close();
+                            res.send({ message: "Profile updated successfully!", success: true });
+                        })
+                    }
+                });
+            }
+        })
     }
 
 }

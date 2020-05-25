@@ -23,24 +23,36 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/disapprove-leave", disapprove)
 
+    app.post("/api/cancel-leave", cancelLeave)
+
+    app.post("/api/approve-reject-leave-cancellation", approveRejectLeaveCancellation);
+
     function getLeaveStatus(req, res) {
-        pool2.then(pool => {
-            console.log('LeaveStatus');
-            var request = pool.request();
-            request
-                .query("SELECT * FROM LeaveStatus")
-                .then(function (data, recordsets, returnValue, affected) {
-                    mssql.close();
-                    res.send({
-                        message: "Data retrieved successfully!",
-                        success: true,
-                        response: data.recordset
-                    });
-                })
-                .catch(function (err) {
-                    console.log(err);
-                    res.send(err);
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    console.log('LeaveStatus');
+                    var request = pool.request();
+                    request
+                        .query("SELECT * FROM LeaveStatus")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
                 });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
         });
     }
 
@@ -52,6 +64,16 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_AddLeave');
+                    if (isNaN(parseInt(req.body.userId)) || isNaN(parseInt(req.body.leaveCategory))
+                        || (req.body.halfDay != undefined && isNaN(parseInt(req.body.halfDay)))
+                        || new Date(req.body.submitDate) == "Invalid Date" || new Date(req.body.startDate) == "Invalid Date" || new Date(req.body.endDate) == "Invalid Date") {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("userId", mssql.Int, parseInt(req.body.userId));
                     request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
                     request.input("details", mssql.VarChar(4000), req.body.details);
@@ -92,7 +114,7 @@ function createSchema(app, mssql, pool2) {
                                             message: "Leave added successfully!",
                                             success: true,
                                         });
-                                        // mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                        mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
                                     })
                                     .catch(function (err) {
                                         console.log(err);
@@ -121,7 +143,7 @@ function createSchema(app, mssql, pool2) {
                                     req.body.leaveId = data.recordset[0].Id;
                                     addHodApproval(req, res);
                                 }
-                                // mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
                             })
                             .catch(function (err) {
                                 console.log(err);
@@ -196,6 +218,18 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_UpdateLeave');
+                    if (isNaN(parseInt(req.body.leaveId)) || isNaN(parseInt(req.body.userId))
+                        || (req.body.leaveCategory != undefined && isNaN(parseInt(req.body.leaveCategory)))
+                        || (req.body.halfDay != undefined && isNaN(parseInt(req.body.halfDay)))
+                        || new Date(req.body.submitDate) == "Invalid Date" || new Date(req.body.startDate) == "Invalid Date"
+                        || new Date(req.body.endDate) == "Invalid Date") {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("userId", mssql.Int, parseInt(req.body.userId));
                     request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
                     request.input("details", mssql.VarChar(4000), req.body.details);
@@ -235,6 +269,18 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.query);
                     console.log('sp_GetEmployeeLeaves');
+                    if ((req.query.userId != undefined && isNaN(parseInt(req.query.userId))) || (req.query.year != undefined && isNaN(parseInt(req.query.year)))
+                        || (req.query.limit != undefined && isNaN(parseInt(req.query.limit))) || (req.query.page != undefined && isNaN(parseInt(req.query.page)))
+                        || (req.query.category != undefined && isNaN(parseInt(req.query.category))) || (req.query.status != undefined && isNaN(parseInt(req.query.status)))
+                        || (req.query.halfDay != undefined && isNaN(parseInt(req.query.halfDay)))
+                        || (req.query.fromdate != undefined && new Date(req.query.fromdate) == "Invalid Date") || (req.query.todate != undefined && new Date(req.query.todate) == "Invalid Date")) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("userId", mssql.Int, req.query.userId);
                     request.input("year", mssql.Int, req.query.year);
                     request.input("fromdate", mssql.VarChar(100), req.query.fromdate);
@@ -245,10 +291,10 @@ function createSchema(app, mssql, pool2) {
                     if (req.query.page) {
                         request.input("page", mssql.Int, req.query.page);
                     }
-                    if (req.query.category != '') {
+                    if (req.query.category != undefined) {
                         request.input("category", mssql.Int, req.query.category);
                     }
-                    if (req.query.status != '') {
+                    if (req.query.status != undefined) {
                         request.input("status", mssql.Int, req.query.status);
                     }
                     request.input("halfDay", mssql.Int, req.query.halfDay);
@@ -275,23 +321,31 @@ function createSchema(app, mssql, pool2) {
     }
 
     function getLeaveCategory(req, res) {
-        pool2.then(pool => {
-            var request = pool.request();
-            console.log("SELECT * FROM LeaveCategory");
-            request
-                .query("SELECT * FROM LeaveCategory")
-                .then(function (data, recordsets, returnValue, affected) {
-                    mssql.close();
-                    res.send({
-                        message: "Data retrieved successfully!",
-                        success: true,
-                        response: data.recordset
-                    });
-                })
-                .catch(function (err) {
-                    console.log(err);
-                    res.send(err);
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log("SELECT * FROM LeaveCategory");
+                    request
+                        .query("SELECT * FROM LeaveCategory")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
                 });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
         });
     }
 
@@ -299,7 +353,15 @@ function createSchema(app, mssql, pool2) {
         pool2.then(pool => {
             var request = pool.request();
             console.log(req.query);
-            console.log('sp_GetPendingLeaveApprovals')
+            console.log('sp_GetPendingLeaveApprovals');
+            if ((req.query.userId == undefined || isNaN(parseInt(req.query.userId)))) {
+                res.status("400");
+                res.send({
+                    message: "invalid UserId",
+                    success: false,
+                });
+                return;
+            }
             request.input("userId", mssql.Int, req.query.userId);
             request
                 .execute("sp_GetPendingLeaveApprovals")
@@ -325,6 +387,16 @@ function createSchema(app, mssql, pool2) {
             console.log('sp_ApproveRejectLeave')
             var status = req.body.status;
             var leaveId = req.body.leaveId;
+            if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                (req.body.leaveId == undefined || isNaN(parseInt(req.body.leaveId))) ||
+                (req.body.status == undefined || isNaN(parseInt(req.body.status)))) {
+                res.status("400");
+                res.send({
+                    message: "invalid parameters",
+                    success: false,
+                });
+                return;
+            }
             request.input("userId", mssql.Int, parseInt(req.body.userId));
             request.input("leaveId", mssql.Int, parseInt(req.body.leaveId));
             request.input("status", mssql.Int, parseInt(req.body.status));
@@ -361,7 +433,7 @@ function createSchema(app, mssql, pool2) {
                         message: "Leave Status Updated successfully!",
                         success: true,
                     });
-                    // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
+                    mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -389,7 +461,7 @@ function createSchema(app, mssql, pool2) {
                             success: true,
                         });
                         checkForRegularize(req.body.leaveId);
-                        // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
+                        mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -415,7 +487,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Leave Status Updated successfully!",
                                 success: true,
                             });
-                            // mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
+                            mailer.sendMailAfterApproveLeave(req.body.userId, req.body.leaveId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -486,39 +558,59 @@ function createSchema(app, mssql, pool2) {
 
 
     function disapprove(req, res) {
-        pool2.then(pool => {
-            var request = pool.request();
-            console.log(req.body);
-            console.log('disapproveLeave');
-            var query = "select * from EmployeeLeave where Id = " + req.body.leaveId;
-            request
-                .query(query)
-                .then(function (data, recordsets, returnValue, affected) {
-                    var leave = data.recordset[0];
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
                     var request = pool.request();
-                    var query = "update EmployeeLeave set status = 2 where Id = " + req.body.leaveId;
-                    console.log(data.recordset[0]);
+                    console.log(req.body);
+                    console.log('disapproveLeave');
+                    if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                        (req.body.leaveId == undefined || isNaN(parseInt(req.body.leaveId))) ||
+                        (req.body.disapproveBy == undefined || isNaN(parseInt(req.body.disapproveBy))) ||
+                        (req.body.DisapproveReason == undefined)) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
+                    var query = "select * from EmployeeLeave where Id = " + req.body.leaveId;
                     request
                         .query(query)
                         .then(function (data, recordsets, returnValue, affected) {
-                            if (leave.Status == 1) {
-                                restoreLeaves(req.body.leaveId, req.body.userId);;
-                            }
-                            mssql.close();
-                            res.send({
-                                message: "Leave Status Updated successfully!",
-                                success: true,
-                            });
-                        }).catch(function (err) {
+                            var leave = data.recordset[0];
+                            var request = pool.request();
+                            var query = "update EmployeeLeave set status = 5,DisapproveBy='" + req.body.disapproveBy + "',DisapproveReason='" + req.body.DisapproveReason + "' where Id = " + req.body.leaveId;
+                            console.log(data.recordset[0]);
+                            request
+                                .query(query)
+                                .then(function (data, recordsets, returnValue, affected) {
+                                    if (leave.Status == 1) {
+                                        restoreLeaves(req.body.leaveId, req.body.userId);;
+                                    }
+                                    mssql.close();
+                                    res.send({
+                                        message: "Leave Status Updated successfully!",
+                                        success: true,
+                                    });
+                                }).catch(function (err) {
+                                    console.log(err);
+                                    res.send(err);
+                                });;
+                        })
+                        .catch(function (err) {
                             console.log(err);
                             res.send(err);
-                        });;
-                })
-                .catch(function (err) {
-                    console.log(err);
-                    res.send(err);
+                        });
                 });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
         });
+
     }
 
     function restoreLeaves(leaveId, userId) {
@@ -577,6 +669,174 @@ function createSchema(app, mssql, pool2) {
                     res.send(err);
                 });
         })
+    }
+
+    function cancelLeave(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    console.log('sp_cancelLeave');
+                    if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                        (req.body.leaveId == undefined || isNaN(parseInt(req.body.leaveId))) ||
+                        (req.body.reason == undefined) ||
+                        (new Date(req.body.submitDate) == "Invalid Date")) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
+                    request.input("userId", mssql.Int, parseInt(req.body.userId));
+                    request.input("leaveId", mssql.Int, parseInt(req.body.leaveId));
+                    request.input("submitDate", mssql.VarChar(4000), req.body.submitDate)
+                    request.input("reason", mssql.VarChar(4000), req.body.reason)
+                    request
+                        .execute('sp_cancelLeave')
+                        .then(function (data, recordsets, returnValue, affected) {
+                            res.send({
+                                message: "Cancellation request sent successfully!",
+                                success: true,
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+
+    }
+
+    function approveRejectLeaveCancellation(req, res) {
+        pool2.then(pool => {
+            var request = pool.request();
+            console.log(req.body);
+            console.log('sp_ApproveRejectLeave');
+            if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                (req.body.leaveId == undefined || isNaN(parseInt(req.body.leaveId))) ||
+                (req.body.status == undefined || isNaN(parseInt(req.body.status)))) {
+                res.status("400");
+                res.send({
+                    message: "invalid parameters",
+                    success: false,
+                });
+                return;
+            }
+            var status = req.body.status;
+            var leaveId = req.body.leaveId;
+            request.input("userId", mssql.Int, parseInt(req.body.userId));
+            request.input("leaveId", mssql.Int, parseInt(req.body.leaveId));
+            request.input("status", mssql.Int, parseInt(req.body.status));
+            request.input("reason", mssql.VarChar(4000), req.body.reason)
+            request
+                .execute("sp_ApproveRejectLeave")
+                .then(function (data, recordsets, returnValue, affected) {
+                    mssql.close();
+                    console.log(data);
+                    if (status == 2) {
+                        var request = pool.request();
+                        var query = "update EmployeeLeave set CancelReason=null,CancelDate=null where Id =" + leaveId;
+                        request
+                            .query(query)
+                            .then(function (data, recordsets, returnValue, affected) {
+                                res.send({
+                                    message: "Leave Cancellation Rejected successfully!",
+                                    success: true,
+                                });
+                            }).catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    } else {
+                        updateStatusofLeaveCancellation(req, res, data.recordset);
+                    }
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        });
+    }
+
+    function updateStatusofLeaveCancellation(req, res, records) {
+        pool2.then(pool => {
+            var request = pool.request();
+            var query;
+            console.log(req.body);
+            if (records.length == 1) {
+                query = "select * from EmployeeLeave where Id = " + req.body.leaveId;
+                console.log('single  Cancellation accepted')
+                request
+                    .query(query)
+                    .then(function (data, recordsets, returnValue, affected) {
+                        var LeaveDetails = data.recordset[0];
+                        var request = pool.request();
+                        query = "update EmployeeLeave set status = 4 where Id = " + req.body.leaveId;
+                        request
+                            .query(query)
+                            .then(function (data, recordsets, returnValue, affected) {
+                                mssql.close();
+                                if (LeaveDetails.Status == 1) {
+                                    restoreLeaves(LeaveDetails.Id, LeaveDetails.Userid);
+                                }
+                                console.log(data);
+                                res.send({
+                                    message: "Leave Cancellation Accepted successfully!",
+                                    success: true,
+                                });
+                            })
+                            .catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    })
+                    .catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+            } else {
+                let __t = true;
+                records.forEach(record => {
+                    if (record.Status != 1) {
+                        __t = false;
+                        return;
+                    }
+                });
+                if (__t) {
+                    console.log('group Cancellation accept')
+                    query = "update EmployeeLeave set status = 1 where status=3 and Id = " + req.body.leaveId;
+                    request
+                        .query(query)
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            console.log(data);
+                            res.send({
+                                message: "Leave Cancellation Accepted successfully!",
+                                success: true,
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                } else {
+                    console.log('group Cancellation pending')
+                    res.send({
+                        message: "Leave Cancellation Accepted successfully!",
+                        success: true,
+                    });
+                }
+            }
+
+        });
     }
 
 }

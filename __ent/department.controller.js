@@ -13,7 +13,7 @@ function createSchema(app, mssql, pool2) {
     app.get('/api/get-employees-in-dept', getEmployeesByDepartment);
 
     app.get('/api/get-all-department', getDepartment);
-    ////////////////////////////////////////////////////////////////////////////
+
     app.post('/api/delete-department', deleteDepartment);
 
     app.post('/api/delete-employee-from-department', deleteEmployeeFromDepartment);
@@ -30,6 +30,17 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log("sp_addDepartment");
+                    if (req.body.name == undefined ||
+                        req.body.description == undefined ||
+                        isNaN(parseInt(req.body.createdBy))
+                        || new Date(req.body.createdOn) == "Invalid Date") {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('name', mssql.VarChar(2000), req.body.name);
                     request.input('description', mssql.VarChar(2000), req.body.description);
                     request.input('createdBy', mssql.Int, req.body.createdBy);
@@ -65,9 +76,23 @@ function createSchema(app, mssql, pool2) {
                     pool2.then((pool) => {
                         var request = pool.request();
                         console.log(member);
+                        if (isNaN(parseInt(member.obj.UserId))
+                            || isNaN(parseInt(member.obj.DeptId))
+                            || isNaN(parseInt(member.obj.RoleId))
+                            || isNaN(parseInt(member.obj.AddedBy))
+                            || new Date(member.obj.AddedOn) == "Invalid Date") {
+                            res.status("400");
+                            res.send({
+                                message: "invalid parameters",
+                                success: false,
+                            });
+                            return;
+                        }
                         request.input('UserId', mssql.Int, member.obj.UserId);
                         request.input('DeptId', mssql.Int, member.obj.DeptId);
                         request.input('RoleId', mssql.Int, member.obj.RoleId);
+                        request.input('AddedBy', mssql.Int, member.obj.AddedBy);
+                        request.input('AddedOn', mssql.VarChar(100), member.obj.AddedOn);
                         request.execute('sp_addEmployeeInDept').then(function (data, recordsets, returnValue, affected) {
                             mssql.close();
                             console.log("Index ==>", member.index);
@@ -97,6 +122,14 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.query);
                     console.log("sp_getMembersByDepartment");
+                    if (isNaN(parseInt(req.query.DeptId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid DeptId",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("DeptId", mssql.Int, req.query.DeptId);
                     request.execute('sp_getMembersByDepartment').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
@@ -144,8 +177,15 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log('=====delete delpt=====');
                     console.log(req.body);
+                    if (isNaN(parseInt(req.body.DeptId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid DeptId",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('DeptId', mssql.Int, req.body.DeptId);
-
                     request.execute('sp_deleteDepartment').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: 'Department Deleted successfully!', success: true, response: data.recordset });
@@ -170,9 +210,17 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log('=====delete status=====');
                     console.log(req.body);
+                    if (isNaN(parseInt(req.body.UserId))
+                        || isNaN(parseInt(req.body.DeptId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('UserId', mssql.Int, req.body.UserId);
                     request.input('DeptId', mssql.Int, req.body.DeptId);
-
                     request.execute('sp_RemoveEmployeeFromDept').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({
@@ -199,6 +247,14 @@ function createSchema(app, mssql, pool2) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
+                    if (isNaN(parseInt(req.body.DeptId))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('DeptId', mssql.Int, req.body.DeptId);
                     request.input('name', mssql.VarChar(2000), req.body.name);
                     request.input('description', mssql.VarChar(5000), req.body.description);

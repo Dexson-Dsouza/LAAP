@@ -6,8 +6,9 @@ var jwtToken = require("./jwt.controller");
 var ICS_URL = 'http://careers.infinite-usa.com';
 var ICS_ADMIN_URL = "http://admin.infinite-usa.com";
 var FCM = require('fcm-push');
-var serverKey = '';
+var serverKey = undefined;
 var fcm = new FCM('AAAAEorCvMk:APA91bFps9mtelVcroviLVhC3sW0mcWf6Pa4bB_WO3TT1KeR4lYnocXXXkYMflLg1wiC6g8v9e7iw_WTYLEm7FoM0yiPx_2bBIYXgT7OtfOU1CgHvAC0Je4_ngRBju_IUUsO5nHW2Z0V');
+var moment = require('moment');
 
 var transporter = nodemailer.createTransport({
   host: "Infiniteusa-com02b.mail.protection.outlook.com",
@@ -63,15 +64,17 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
     var moment = require('moment');
-    var line = ''
+    var line = undefined
     if (moment(bResult.EndDate).format("MM-DD-YYYY") == moment(bResult.StartDate).format("MM-DD-YYYY")) {
-      line = 'on ' + moment(bResult.EndDate).format("MM-DD-YYYY")
+      line = 'on <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
     } else {
-      line = 'from ' + moment(bResult.EndDate).format("MM-DD-YYYY") + ' to ' + moment(bResult.StartDate).format("MM-DD-YYYY");
+      line = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format("'MMM DD YYYY'") + ' </strong>';
     }
+    var innertext='<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>'+aResult.DisplayName+'</strong> has applied for leave '+line+'. Please review and approve.</p>'
     var replacements = {
       username: aResult.DisplayName,
       line: line,
+      innertext:innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
     triggerMail("leave-created.html", replacements, cResult.join(","), "New Leave Request");
@@ -125,6 +128,7 @@ function sendMailAfterApproveLeave(userId, leaveId) {
     var replacements = {
       from: moment(result1.StartDate).format('YYYY-MM-DD'),
       to: moment(result1.EndDate).format('YYYY-MM-DD'),
+      username: results.DisplayName
     };
     if (result1.Status == 1) {
       triggerMail("leave-approved.html", replacements, aResult.join(","), "Leave Request Updates");
@@ -333,11 +337,11 @@ function sendMailAfterWfhAdded(wfhId, userId) {
     var bResult = results[1];
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
-    var line = ''
+    var line = undefined
     if (moment(bResult.EndDate).format("MM-DD-YYYY") == moment(bResult.StartDate).format("MM-DD-YYYY")) {
-      line = 'on ' + moment(bResult.EndDate).format("MM-DD-YYYY");
+      line = "on <strong>" + moment(bResult.EndDate).format('MMM DD YYYY') + " </strong>";
     } else {
-      line = 'from ' + moment(bResult.EndDate).format("MM-DD-YYYY") + ' to ' + moment(bResult.StartDate).format("MM-DD-YYYY");
+      line = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
     }
     var replacements = {
       username: aResult.DisplayName,
@@ -446,13 +450,13 @@ function sendMailAfterApproveWfh(userId, wfhId) {
     console.log('---------------------')
     console.log(bResult);
     console.log('---------------------')
-    var moment = require('moment');
     var replacements = {
       from: moment(result1.StartDate).format('YYYY-MM-DD'),
       to: moment(result1.EndDate).format('YYYY-MM-DD'),
+      username: results.DisplayName
     };
     if (result1.Status == 1) {
-      triggerMail("wfh-approved.html", replacements, cResult.join(","), "Work-from-home Request Updates");
+      triggerMail("wfh-approved.html", replacements, aResult.join(","), "Work-from-home Request Updates");
       console.log("*******PushId Length****", aPushId.length);
       if (aPushId.length) {
         var message = {
@@ -470,7 +474,7 @@ function sendMailAfterApproveWfh(userId, wfhId) {
         triggerPushNotification(message);
       }
     } else if (result1.Status == 2) {
-      triggerMail("wfh-reject.html", replacements, cResult.join(","), "Work-from-home Request Updates");
+      triggerMail("wfh-reject.html", replacements, aResult.join(","), "Work-from-home Request Updates");
       console.log("*******PushId Length****", aPushId.length);
       if (aPushId.length) {
         var message = {
@@ -508,7 +512,7 @@ function sendMailAfterRegReqAdded(date, empCode) {
     var aPushId = results[1].pushId;
     var replacements = {
       username: aResult.DisplayName,
-      date: moment(date).format("MM-DD-YYYY"),
+      date: moment(date).format("'MMM DD YYYY'"),
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
 
@@ -544,7 +548,7 @@ function sendMailAfterRegReqApprove(trackId, date, status) {
     var aPushId = results[0].pushId;
     var replacements = {
       username: aResult.DisplayName,
-      date: moment(date).format("MM-DD-YYYY"),
+      date: moment(date).format("'MMM DD YYYY'"),
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
 
@@ -604,12 +608,10 @@ function getUserDetailsFromRegId(callback, trackId) {
       var pushId = [];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
-          if ((__o[i].EmployeeCode) != empCode) {
-            console.log("email user");
-            emailId.push(__o[i].EmailAddress);
-            if (__o[i].PushId != null) {
-              pushId.push(__o[i].PushId);
-            }
+          console.log("email user");
+          emailId.push(__o[i].EmailAddress);
+          if (__o[i].PushId != null) {
+            pushId.push(__o[i].PushId);
           }
         }
       }
@@ -671,15 +673,15 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
       mailOptions.attachments = attachments;
     }
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        return console.log(error);
-      }
-      console.log("Message sent: %s", info.messageId);
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-      console.log("Mail Sent to: %s", to);
-      console.log("Mail Subject is:", subject);
-    });
+    // transporter.sendMail(mailOptions, (error, info) => {
+    //   if (error) {
+    //     return console.log(error);
+    //   }
+    //   console.log("Message sent: %s", info.messageId);
+    //   console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+    //   console.log("Mail Sent to: %s", to);
+    //   console.log("Mail Subject is:", subject);
+    // });
 
 
   });

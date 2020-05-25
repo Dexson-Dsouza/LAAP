@@ -32,6 +32,15 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_AddWfh');
+                    if (isNaN(parseInt(req.body.userId)) || req.body.details == undefined
+                        || new Date(req.body.submitDate) == "Invalid Date" || new Date(req.body.startDate) == "Invalid Date" || new Date(req.body.endDate) == "Invalid Date") {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("userId", mssql.Int, parseInt(req.body.userId));
                     request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
                     request.input("details", mssql.VarChar(4000), req.body.details);
@@ -46,7 +55,7 @@ function createSchema(app, mssql, pool2) {
                                 success: true,
                                 response: data.recordset
                             });
-                            // mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
+                            mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -65,6 +74,16 @@ function createSchema(app, mssql, pool2) {
             console.log(decodedToken.email);
             if (decodedToken.email) {
                 pool2.then(pool => {
+                    if ((req.query.limit != undefined && isNaN(parseInt(req.query.limit)))
+                        || (req.query.page != undefined && isNaN(parseInt(req.query.page)))
+                        || (req.query.userId != undefined && isNaN(parseInt(req.query.userId)))) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     var request = pool.request();
                     console.log(req.query);
                     console.log('sp_GetEmployeeWfh');
@@ -106,6 +125,17 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_UpdateWfh');
+                    if ((req.body.UpdateDate != undefined && new Date(req.body.UpdateDate) == "Invalid Date")
+                        || isNaN(parseInt(req.body.wfhId))
+                        || (parseInt(req.body.userId))
+                    ) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("userId", mssql.Int, parseInt(req.body.userId));
                     request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
                     request.input("details", mssql.VarChar(4000), req.body.details);
@@ -139,7 +169,15 @@ function createSchema(app, mssql, pool2) {
         pool2.then(pool => {
             var request = pool.request();
             console.log(req.query);
-            console.log('sp_GetPendingWfhApprovals')
+            console.log('sp_GetPendingWfhApprovals');
+            if (isNaN(parseInt(req.query.userId))) {
+                res.status("400");
+                res.send({
+                    message: "invalid parameters",
+                    success: false,
+                });
+                return;
+            }
             request.input("userId", mssql.Int, req.query.userId);
             request
                 .execute("sp_GetPendingWfhApprovals")
@@ -165,6 +203,16 @@ function createSchema(app, mssql, pool2) {
             console.log('sp_ApproveRejectWfh')
             var status = req.body.status;
             var leaveId = req.body.leaveId;
+            if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                (req.body.wfhId == undefined || isNaN(parseInt(req.body.wfhId))) ||
+                (req.body.status == undefined || isNaN(parseInt(req.body.status)))) {
+                res.status("400");
+                res.send({
+                    message: "invalid parameters",
+                    success: false,
+                });
+                return;
+            }
             request.input("userId", mssql.Int, parseInt(req.body.userId));
             request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
             request.input("status", mssql.Int, parseInt(req.body.status));
@@ -201,7 +249,7 @@ function createSchema(app, mssql, pool2) {
                         message: "Wfh Status Updated successfully!",
                         success: true,
                     });
-                    // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
+                    mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -227,7 +275,7 @@ function createSchema(app, mssql, pool2) {
                             message: "Wfh Status Updated successfully!",
                             success: true,
                         });
-                        // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
+                        mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -253,7 +301,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "Wfh Status Updated successfully!",
                                 success: true,
                             });
-                            // mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
+                            mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -282,6 +330,19 @@ function createSchema(app, mssql, pool2) {
                 console.log(arrayWithIndx);
                 async.eachSeries(arrayWithIndx, function (member, callback) {
                     pool2.then((pool) => {
+                        if ((isNaN(parseInt(member.obj.UserId))) ||
+                            new Date(member.obj.StartTime) == "Invalid Date" ||
+                            new Date(member.obj.EndTime) == "Invalid Date" ||
+                            (isNaN(parseInt(member.obj.Hours))) ||
+                            (isNaN(parseInt(member.obj.Billable)))
+                        ) {
+                            res.status("400");
+                            res.send({
+                                message: "invalid parameters",
+                                success: false,
+                            });
+                            return;
+                        }
                         var request = pool.request();
                         console.log(member);
                         request.input('projectId', mssql.Int, member.obj.ProjectId);
@@ -406,7 +467,17 @@ function createSchema(app, mssql, pool2) {
                 pool2.then((pool) => {
                     var request = pool.request();
                     console.log(req.body);
-                    console.log('sp_getTaskList')
+                    console.log('sp_getTaskList');
+                    if (new Date(req.query.Date) == "Invalid Date" ||
+                        (isNaN(parseInt(req.query.UserId)))
+                    ) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input('UserId', mssql.Int, req.query.UserId);
                     request.input("Date", mssql.VarChar(100), req.query.Date);
                     request.execute('sp_getTaskList').then(function (data, recordsets, returnValue, affected) {
