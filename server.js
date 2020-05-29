@@ -21,7 +21,8 @@ var whitelist = [
   "https://infinite-staff.com",
   "https://infinite-usa.com",
   "http://careers.infinite-usa.com",
-  "http://admin.infinite-usa.com"
+  "http://admin.infinite-usa.com",
+  "http://localhost:8100",
 ];
 var PORT = 3300 | process.env.PORT;
 
