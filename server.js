@@ -64,12 +64,28 @@ app.use(
 
 var pool;
 function connectToDatabase() {
+  // var config = {
+  //   user: "sa",
+  //   password: "Infinite123#",
+  //   server: "INMDCS43873\\MSSQLSERVER14",
+  //   port: 1433,
+  //   database: "Infinite_L&A_v1",
+  //   options: {
+  //     encrypt: false
+  //   },
+  //   connectionTimeout: 300000,
+  //   requestTimeout: 300000,
+  //   pool: {
+  //     idleTimeoutMillis: 300000,
+  //     max: 100
+  //   }
+  // };
   var config = {
-    user: "sa",
+    user: "fsliteadmin",
     password: "Infinite123#",
-    server: "INMDCS43873\\MSSQLSERVER14",
+    server: "13.90.128.148",
     port: 1433,
-    database: "Infinite_L&A_v1",
+    database: "Infinite_L&A_V1",
     options: {
       encrypt: false
     },
@@ -121,6 +137,13 @@ var sync = require('./__ent/datamigrate.controller');
 //   sync.IncrementLeaveBal();
 // });
 
+
+// var schedule = require('node-schedule');
+
+// var j = schedule.scheduleJob('0 0 1 * *', function(){
+//     console.log('Your scheduled job at beginning of month');
+//     sync.GenerateReport();
+// });
 
 
 
