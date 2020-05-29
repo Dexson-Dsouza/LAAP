@@ -893,7 +893,7 @@ function createSchema(app, mssql, pool2, fs) {
                     request.input('Approver', mssql.Int, req.body.ApprovedBy);
                     request.input('Reason', mssql.VarChar(100), req.body.Reason);
                     var education = [];
-                    var approver=req.body.ApprovedBy;
+                    var approver = req.body.ApprovedBy;
                     education = req.body.EducationDetails;
                     if (req.body.Status) {
                         console.log("sp_updateProfileChanges");
@@ -925,6 +925,8 @@ function createSchema(app, mssql, pool2, fs) {
                             var request = pool.request();
                             request.input('Status', mssql.Int, _x.Status);
                             request.input('Id', mssql.Int, _x.Id);
+                            request.input('Approver', mssql.Int, approver);
+                            request.input('Reason', mssql.VarChar(100), _x.Reason);
                             console.log('sp_updateEducationChanges')
                             request.execute('sp_updateEducationChanges').then(function (data, recordsets, returnValue, affected) {
                                 callback();
