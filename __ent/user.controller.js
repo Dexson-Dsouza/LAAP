@@ -827,8 +827,8 @@ function createSchema(app, mssql, pool2, fs) {
                         request.execute('sp_GetPendingEducationDataApprovals').then(function (data, recordsets, returnValue, affected) {
                             var _e = [];
                             _e = data.recordset;
-                            console.log(_p);
-                            console.log(_e);
+                            // console.log(_p);
+                            // console.log(_e);
                             var m = new Map()
                             _p.forEach(x => {
                                 m.set(x.UserId, { personalDetail: x, education: [] });
@@ -842,10 +842,33 @@ function createSchema(app, mssql, pool2, fs) {
                                     m.get(x.UserId).education.push(x);
                                 }
                             })
-                            mssql.close();
-                            res.send({
-                                message: "Pending changes retrieved successfully!", success: true, response: [...m.values()]
-                            });
+                            var resul = [...m.values()];
+                            let i = 0;
+                            async.eachSeries(resul, (x, callback) => {
+                                let userid;
+                                if (x.personalDetail && x.personalDetail.UserId) {
+                                    userid = x.personalDetail.UserId;
+                                } else {
+                                    userid = x.education[0].UserId;
+                                }
+                                console.log('userid ', userid)
+                                var request = pool.request();
+                                request.input('userId', mssql.Int, userid);
+                                request.execute('sp_GetEmployeeDetails').then(function (data, recordsets, returnValue, affected) {
+                                    console.log(data.recordset[0])
+                                    resul[i]["userDetail"] = data.recordset[0];
+                                    i++;
+                                    callback();
+                                }).catch(function (err) {
+                                    console.log(err);
+                                    callback();
+                                });
+                            }, () => {
+                                mssql.close();
+                                res.send({
+                                    message: "Pending changes retrieved successfully!", success: true, response: resul
+                                });
+                            })
                         })
                     }).catch(function (err) {
                         console.log(err);
@@ -867,7 +890,10 @@ function createSchema(app, mssql, pool2, fs) {
                     var request = pool.request();
                     request.input('Status', mssql.Int, req.body.Status);
                     request.input('UserId', mssql.Int, req.body.UserId);
+                    request.input('Approver', mssql.Int, req.body.ApprovedBy);
+                    request.input('Reason', mssql.VarChar(100), req.body.Reason);
                     var education = [];
+                    var approver=req.body.ApprovedBy;
                     education = req.body.EducationDetails;
                     if (req.body.Status) {
                         console.log("sp_updateProfileChanges");
@@ -876,6 +902,8 @@ function createSchema(app, mssql, pool2, fs) {
                                 var request = pool.request();
                                 request.input('Status', mssql.Int, _x.Status);
                                 request.input('Id', mssql.Int, _x.Id);
+                                request.input('Approver', mssql.Int, approver);
+                                request.input('Reason', mssql.VarChar(100), _x.Reason);
                                 console.log('sp_updateEducationChanges')
                                 request.execute('sp_updateEducationChanges').then(function (data, recordsets, returnValue, affected) {
                                     callback();
