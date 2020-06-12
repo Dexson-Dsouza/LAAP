@@ -865,9 +865,21 @@ function createSchema(app, mssql, pool2, fs) {
                                 });
                             }, () => {
                                 mssql.close();
-                                res.send({
-                                    message: "Pending changes retrieved successfully!", success: true, response: resul
-                                });
+                                if (req.query.UserId) {
+                                    var response=[];
+                                    resul.forEach((x)=>{
+                                        if(x.userDetail.Id==req.query.UserId){
+                                            response.push(x);
+                                        }
+                                    })
+                                    res.send({
+                                        message: "Pending changes for user retrieved successfully!", success: true, response: response
+                                    });
+                                } else {
+                                    res.send({
+                                        message: "Pending changes retrieved successfully!", success: true, response: resul
+                                    });
+                                }
                             })
                         })
                     }).catch(function (err) {

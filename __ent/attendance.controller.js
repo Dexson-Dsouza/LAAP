@@ -112,17 +112,6 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.body);
                     console.log('sp_EditEmployeeAttendance');
-                    if (new Date(req.body.InTime) == "Invalid Date" || new Date(req.body.OutTime) == "Invalid Date"
-                        || new Date(req.body.AttendanceDate) == "Invalid Date" || new Date(req.body.CreatedDate) == "Invalid Date"
-                        || isNaN(parseInt(req.body.AttendanceLogId)) || isNaN(parseInt(req.body.EmployeeCode))
-                        || isNaN(parseInt(req.body.status))) {
-                        res.status("400");
-                        res.send({
-                            message: "invalid parameters",
-                            success: false,
-                        });
-                        return;
-                    }
                     request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));
                     request.input("AttendanceDate", mssql.VarChar(100), req.body.AttendanceDate);
                     request.input("InTime", mssql.VarChar(100), req.body.InTime);
@@ -134,7 +123,7 @@ function createSchema(app, mssql, pool2) {
                     request
                         .execute("sp_EditEmployeeAttendance")
                         .then(function (data, recordsets, returnValue, affected) {
-                            mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
+                            // mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
                             mssql.close();
                             res.send({
                                 message: "Edit request added successfully!",

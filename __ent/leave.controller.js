@@ -269,18 +269,6 @@ function createSchema(app, mssql, pool2) {
                     var request = pool.request();
                     console.log(req.query);
                     console.log('sp_GetEmployeeLeaves');
-                    if ((req.query.userId != undefined && isNaN(parseInt(req.query.userId))) || (req.query.year != undefined && isNaN(parseInt(req.query.year)))
-                        || (req.query.limit != undefined && isNaN(parseInt(req.query.limit))) || (req.query.page != undefined && isNaN(parseInt(req.query.page)))
-                        || (req.query.category != undefined && isNaN(parseInt(req.query.category))) || (req.query.status != undefined && isNaN(parseInt(req.query.status)))
-                        || (req.query.halfDay != undefined && isNaN(parseInt(req.query.halfDay)))
-                        || (req.query.fromdate != undefined && new Date(req.query.fromdate) == "Invalid Date") || (req.query.todate != undefined && new Date(req.query.todate) == "Invalid Date")) {
-                        res.status("400");
-                        res.send({
-                            message: "invalid parameters",
-                            success: false,
-                        });
-                        return;
-                    }
                     request.input("userId", mssql.Int, req.query.userId);
                     request.input("year", mssql.Int, req.query.year);
                     request.input("fromdate", mssql.VarChar(100), req.query.fromdate);
@@ -292,7 +280,7 @@ function createSchema(app, mssql, pool2) {
                         request.input("page", mssql.Int, req.query.page);
                     }
                     if (req.query.category != undefined) {
-                        request.input("category", mssql.Int, req.query.category);
+                        request.input("category", mssql.Int, parseInt(req.query.category));
                     }
                     if (req.query.status != undefined) {
                         request.input("status", mssql.Int, req.query.status);
