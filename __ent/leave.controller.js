@@ -27,6 +27,8 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/approve-reject-leave-cancellation", approveRejectLeaveCancellation);
 
+    app.get("/api/leave-details", getLeaveDetails);
+
     function getLeaveStatus(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log(decodedToken.email);
@@ -139,11 +141,11 @@ function createSchema(app, mssql, pool2) {
                                     message: "Leave added successfully!",
                                     success: true,
                                 });
-                                if (diffDays > 2) {
+                                if (diffDays >= 2) {
                                     req.body.leaveId = data.recordset[0].Id;
                                     addHodApproval(req, res);
                                 }
-                                mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                 mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
                             })
                             .catch(function (err) {
                                 console.log(err);
@@ -161,7 +163,7 @@ function createSchema(app, mssql, pool2) {
     function addHodApproval(req, res) {
         pool2.then(pool => {
             var request = pool.request();
-            var query = "select UserId from [EmployeeDeptMapper] where Deptid =(select DeptId from EmployeeDeptMapper where UserId=" + req.body.userId + ") and Roleid=1"
+            var query = "select UserId from [EmployeeDeptMapper] where Deptid =(select DeptId from EmployeeDeptMapper where UserId=" + req.body.userId + ") and Roleid=1 and isDeleted=0"
             request
                 .query(query)
                 .then(function (data, recordsets, returnValue, affected) {
@@ -186,13 +188,14 @@ function createSchema(app, mssql, pool2) {
                                 }
                             }
                             console.log('fin list = ')
-                            console.log(arr);
+                            console.log(arr, req.body.userId);
 
                             async.eachSeries(arr, function (__t, callback) {
                                 var request = pool.request();
-                                var query = "insert into [LeaveDetails] values("
-                                    + "(select top 1 e.Id  from EmployeeLeave e  where userid=" + parseInt(req.body.userId) + " order by id desc),"
-                                    + __t.UserId + ",3)";
+                                var query = "insert into LeaveDetails (LeaveId,ApproverId,Status) values(" +
+                                    + req.body.leaveId + ","
+                                    + parseInt(__t.UserId) + ",3)";
+                                console.log(query)
                                 request
                                     .query(query)
                                     .then(function (data, recordsets, returnValue, affected) {
@@ -206,7 +209,10 @@ function createSchema(app, mssql, pool2) {
                                 console.log('hod approval added')
                             })
                         })
-                })
+                }).catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
         })
     }
 
@@ -824,6 +830,37 @@ function createSchema(app, mssql, pool2) {
                 }
             }
 
+        });
+    }
+ 
+    function getLeaveDetails(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    console.log('sp_GetLeaveDetails');
+                    request.input("Id", mssql.Int, req.query.Id);
+                    request
+                        .execute("sp_GetLeaveDetails")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
         });
     }
 

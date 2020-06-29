@@ -149,16 +149,45 @@ function createSchema(app, mssql, pool2) {
                 pool2.then(pool => {
                     var request = pool.request();
                     console.log(req.body);
+                    request.input("userid", mssql.Int, req.query.userId);
                     console.log('[sp_GetRegularizeRequests]');
                     request
                         .execute("sp_GetRegularizeRequests")
                         .then(function (data, recordsets, returnValue, affected) {
-                            mssql.close();
-                            res.send({
-                                message: "Data retrieved successfully!",
-                                success: true,
-                                response: data.recordset
-                            });
+                            var resp = data.recordset
+                            var i = 0;
+                            async.eachSeries(data.recordset, (x, callback) => {
+                                if (x.StatusId == 3) {
+                                    // console.log(x);
+                                    // console.log('sp_getTaskList')
+                                    var request = pool.request();
+                                    request.input("UserId", mssql.Int, x.Id);
+                                    request.input("Date", mssql.DateTime, x.AttendanceDate);
+                                    request
+                                        .execute("sp_getTaskList")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            console.log(data.recordset)
+                                            resp[i].TaskList = data.recordset;
+                                            i++;
+                                            callback();
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            callback();
+                                        });
+                                } else {
+                                    resp[i].TaskList = [];
+                                    i++;
+                                    callback();
+                                }
+                            }, () => {
+                                mssql.close();
+                                res.send({
+                                    message: "Data retrieved successfully!",
+                                    success: true,
+                                    response: resp
+                                });
+                            })
                         })
                         .catch(function (err) {
                             console.log(err);

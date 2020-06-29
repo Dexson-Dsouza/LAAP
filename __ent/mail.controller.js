@@ -4,7 +4,7 @@ var handlebars = require("handlebars");
 var async = require("async");
 var jwtToken = require("./jwt.controller");
 var ICS_URL = 'http://careers.infinite-usa.com';
-var ICS_ADMIN_URL = "http://admin.infinite-usa.com";
+var ICS_ADMIN_URL = "http://192.168.8.55:91";
 var FCM = require('fcm-push');
 var serverKey = undefined;
 var fcm = new FCM('AAAAEorCvMk:APA91bFps9mtelVcroviLVhC3sW0mcWf6Pa4bB_WO3TT1KeR4lYnocXXXkYMflLg1wiC6g8v9e7iw_WTYLEm7FoM0yiPx_2bBIYXgT7OtfOU1CgHvAC0Je4_ngRBju_IUUsO5nHW2Z0V');
@@ -70,11 +70,11 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
     } else {
       line = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format("'MMM DD YYYY'") + ' </strong>';
     }
-    var innertext='<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>'+aResult.DisplayName+'</strong> has applied for leave '+line+'. Please review and approve.</p>'
+    var innertext = '<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>' + aResult.DisplayName + '</strong> has applied for leave ' + line + '. Please review and approve.</p>'
     var replacements = {
       username: aResult.DisplayName,
       line: line,
-      innertext:innertext,
+      innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
     triggerMail("leave-created.html", replacements, cResult.join(","), "New Leave Request");
@@ -655,6 +655,73 @@ function getRegApprovers(callback, empCode) {
   });
 }
 
+function sendReportToUser(req) {
+  console.log("==========Send Reports==========");
+  async.series([
+    function (callback) {
+      getuserreports(callback, req);
+    },
+    function (callback) {
+      getPostedByUserDetails(callback, req.body.UserId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    console.log("====a====");
+    console.log(aResult);
+    console.log("====b====");
+    console.log(bResult);
+    var aPushId = [];
+    if (bResult.PushId) {
+      aPushId.push(bResult.PushId);
+    }
+    var moment = require('moment');
+    var date = moment(aResult.Year + '/' + aResult.Month + '/01');
+    var end_date = moment(req.body.CurrentDate).add(1, 'days');
+    var hours = Math.floor(aResult.Shortfall / 60);
+    var mins = aResult.Shortfall % 60;
+    var replacements = {
+      report: aResult,
+      user: bResult,
+      date: date.format('MMMM YYYY'),
+      end_date: end_date.format('Do MMMM YYYY'),
+      last_date: date.endOf('month').format('Do MMMM YYYY'),
+      sf: hours > 0 ? hours + " Hrs " + mins + "and Mins" : mins + " Mins"
+    };
+    triggerMail("Report.html", replacements, bResult.EmailAddress, "Leave & Attendance - " + date.format('MMMM YYYY'));
+    // if (aPushId.length) {
+    //   var message = {
+    //     registration_ids: aPushId,
+    //     notification: {
+    //       title: 'New Leave Request',
+    //       body: aResult.DisplayName + ' applied for leave. Please review and approve.',
+    //       click_action: "FCM_PLUGIN_ACTIVITY",
+    //     },
+    //     data: {
+    //       // page: "approve-job",
+    //     }
+    //   }
+    //   triggerPushNotification(message);
+    // }
+  });
+}
+
+function getuserreports(callback, req) {
+  pool2.then((pool) => {
+    var request = pool.request();
+    request.input('Month', mssql.Int, req.body.Month);
+    request.input('Year', mssql.Int, req.body.Year);
+    request.input('UserId', mssql.Int, req.body.UserId);
+    request.execute('sp_GetUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
+      mssql.close();
+      callback(null, data.recordset[0]);
+    }).catch(function (err) {
+      console.log(err);
+      res.send(err);
+    });
+  });
+}
+
 function triggerMail(tmplName, replacements, to, subject, attachments) {
   readHTMLFile("./__mail_templates/" + tmplName, function (err, html) {
     var template = handlebars.compile(html);
@@ -667,7 +734,7 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
       subject: subject, // Subject line
       html: htmlToSend
     };
-    console.log(replacements);
+    // console.log(replacements);
 
     if (attachments) {
       mailOptions.attachments = attachments;
@@ -707,6 +774,7 @@ exports.sendMailAfterWfhAdded = sendMailAfterWfhAdded;
 exports.sendMailAfterApproveWfh = sendMailAfterApproveWfh;
 exports.sendMailAfterRegReqAdded = sendMailAfterRegReqAdded;
 exports.sendMailAfterRegReqApprove = sendMailAfterRegReqApprove;
+exports.sendReportToUser = sendReportToUser;
 
 
 // exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;

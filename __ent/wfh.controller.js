@@ -23,6 +23,10 @@ function createSchema(app, mssql, pool2) {
 
     app.get("/api/get-wfh-tasklist", getTasks);
 
+    app.post("/api/cancel-wfh", cancelWfh)
+
+    app.post("/api/approve-reject-wfh-cancellation", approveRejectWfhCancellation);
+
 
     function addWfh(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -497,5 +501,177 @@ function createSchema(app, mssql, pool2) {
             }
         });
     }
+
+
+    function cancelWfh(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    console.log('sp_cancelWfh');
+                    if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                        (req.body.wfhId == undefined || isNaN(parseInt(req.body.wfhId))) ||
+                        (req.body.reason == undefined) ||
+                        (new Date(req.body.submitDate) == "Invalid Date")) {
+                        res.status("400");
+                        res.send({
+                            message: "invalid parameters",
+                            success: false,
+                        });
+                        return;
+                    }
+                    request.input("userId", mssql.Int, parseInt(req.body.userId));
+                    request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
+                    request.input("submitDate", mssql.VarChar(4000), req.body.submitDate)
+                    request.input("reason", mssql.VarChar(4000), req.body.reason)
+                    request
+                        .execute('sp_cancelWfh')
+                        .then(function (data, recordsets, returnValue, affected) {
+                            res.send({
+                                message: "Cancellation request sent successfully!",
+                                success: true,
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+
+    }
+
+
+    function approveRejectWfhCancellation(req, res) {
+        pool2.then(pool => {
+            var request = pool.request();
+            console.log(req.body);
+            console.log('sp_ApproveRejectLeave');
+            if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
+                (req.body.wfhId == undefined || isNaN(parseInt(req.body.wfhId))) ||
+                (req.body.status == undefined || isNaN(parseInt(req.body.status)))) {
+                res.status("400");
+                res.send({
+                    message: "invalid parameters",
+                    success: false,
+                });
+                return;
+            }
+            var status = req.body.status;
+            var wfhId = req.body.wfhId;
+            request.input("userId", mssql.Int, parseInt(req.body.userId));
+            request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
+            request.input("status", mssql.Int, parseInt(req.body.status));
+            request.input("reason", mssql.VarChar(4000), req.body.reason)
+            request
+                .execute("sp_ApproveRejectWfh")
+                .then(function (data, recordsets, returnValue, affected) {
+                    mssql.close();
+                    console.log(data);
+                    if (status == 2) {
+                        var request = pool.request();
+                        var query = "update EmployeeWfh set CancelReason=null,CancelDate=null where Id =" + wfhId;
+                        request
+                            .query(query)
+                            .then(function (data, recordsets, returnValue, affected) {
+                                res.send({
+                                    message: "WFh Cancellation Rejected successfully!",
+                                    success: true,
+                                });
+                            }).catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    } else {
+                        updateStatusofWfhCancellation(req, res, data.recordset);
+                    }
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        });
+    }
+
+
+    function updateStatusofWfhCancellation(req, res, records) {
+        pool2.then(pool => {
+            var request = pool.request();
+            var query;
+            console.log(req.body);
+            if (records.length == 1) {
+                query = "select * from EmployeeWfh where Id = " + req.body.wfhId;
+                console.log('single  Cancellation accepted')
+                request
+                    .query(query)
+                    .then(function (data, recordsets, returnValue, affected) {
+                        var LeaveDetails = data.recordset[0];
+                        var request = pool.request();
+                        query = "update EmployeeWfh set status = 4 where Id = " + req.body.wfhId;
+                        request
+                            .query(query)
+                            .then(function (data, recordsets, returnValue, affected) {
+                                mssql.close();
+                                // if (LeaveDetails.Status == 1) {
+                                //     restoreLeaves(LeaveDetails.Id, LeaveDetails.Userid);
+                                // }
+                                console.log(data);
+                                res.send({
+                                    message: "Wfh Cancellation Accepted successfully!",
+                                    success: true,
+                                });
+                            })
+                            .catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                    })
+                    .catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+            } else {
+                let __t = true;
+                records.forEach(record => {
+                    if (record.Status != 1) {
+                        __t = false;
+                        return;
+                    }
+                });
+                if (__t) {
+                    console.log('group Cancellation accept')
+                    query = "update EmployeeWfh set status = 1 where status=3 and Id = " + req.body.wfhId;
+                    request
+                        .query(query)
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            console.log(data);
+                            res.send({
+                                message: "Wfh Cancellation Accepted successfully!",
+                                success: true,
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                } else {
+                    console.log('group Cancellation pending')
+                    res.send({
+                        message: "Wfh Cancellation Accepted successfully!",
+                        success: true,
+                    });
+                }
+            }
+
+        });
+    }
+
 }
 module.exports.loadSchema = createSchema;

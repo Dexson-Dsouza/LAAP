@@ -19,7 +19,7 @@ function createSchema(app, mssql, pool2) {
     thisapp = app;
     thismssql = mssql;
     thispool2 = pool2;
-    //GenerateReport();
+    // GenerateReport();
     app.get('/api/syncdata', syncDataFromWeb);
 }
 
@@ -188,7 +188,7 @@ function GenerateReport() {
             var now = moment();
             var query = 'select Id,EmployeeCode from Users where employeecode is not null';
             let year = now.year();
-            let month = now.format('M');
+            let month = 2
             request.query(query).then(function (data, recordsets, returnValue, affected) {
                 console.log('data len ' + data.recordset.length);
                 async.eachSeries(data.recordset , (__d ,callback )=>{
@@ -279,6 +279,7 @@ function GenerateReport() {
                                     request
                                         .execute("sp_addUserMonthlyReport")
                                         .then(function (data, recordsets, returnValue, affected) {
+                                            console.log('report added for '+emp);
                                             callback();
                                         })
                                         .catch(function (err) {
@@ -293,6 +294,7 @@ function GenerateReport() {
                         }
                         else
                         {
+                            console.log('no past report for '+emp);
                             callback();
                         }
                     }, err => {
@@ -301,7 +303,8 @@ function GenerateReport() {
                     })
                 },()=>{
                     thismssql.close();
-                    console.log('all records updated')
+                    console.log('all records updated');
+                    IncrementLeaveBal();
                 })
             }, err => {
                 console.log('failed ' + err);
@@ -656,4 +659,5 @@ function trans(pool1) {
 module.exports.loadSchema = createSchema;
 exports.connectToDatabase2 = connectToDatabase2;
 exports.GenerateReport = GenerateReport;
+exports.IncrementLeaveBal=IncrementLeaveBal;
 exports.syncData = syncData;

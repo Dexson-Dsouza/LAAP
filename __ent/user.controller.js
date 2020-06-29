@@ -6,6 +6,8 @@ function createSchema(app, mssql, pool2, fs) {
 
     var async = require("async");
 
+    var mailer = require("./mail.controller.js");
+
     //FILE TYPES
     var PROFILE_PIC = 1;
 
@@ -37,6 +39,8 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/edit-hr-policy', editPolicy);
 
+    app.post('/api/delete-hr-policy', deletePolicy);
+
     app.get('/api/get-hr-policy', getPolicy);
 
     app.get('/api/getprojects', getProjects);
@@ -60,6 +64,10 @@ function createSchema(app, mssql, pool2, fs) {
     app.get('/api/getanniversarylist', getanniversarylist);
 
     app.get('/api/getuserreports', getuserreports);
+
+    app.post('/api/edituserreports', edituserreports);
+
+    app.post('/api/senduserreports', senduserreports);
 
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -474,6 +482,30 @@ function createSchema(app, mssql, pool2, fs) {
         });
     }
 
+    function deletePolicy(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.body)
+                    console.log("deletePolicy")
+                    var request = pool.request();
+                    var query = "delete Policies where Id = " + req.body.Id;
+                    request.query(query).then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "policy deleted", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
     function getPolicy(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("valid token");
@@ -812,6 +844,65 @@ function createSchema(app, mssql, pool2, fs) {
         });
     }
 
+    function edituserreports(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.body);
+                    console.log('sp_editUserMonthlyReports');
+                    var request = pool.request();
+                    request.input('Month', mssql.Int, req.body.Month);
+                    request.input('Year', mssql.Int, req.body.Year);
+                    request.input('UserId', mssql.Int, req.body.UserId);
+                    request.input('OpeningLB', mssql.Float, req.body.OpeningLB);
+                    request.input('LeaveTaken', mssql.Float, req.body.LeaveTaken);
+                    request.input('Shortfall', mssql.Float, req.body.Shortfall);
+                    request.input('LeaveDueToShortfall', mssql.Float, req.body.LeaveDueToShortfall);
+                    request.input('TotalLeave', mssql.Float, req.body.TotalLeave);
+                    request.input('LWP', mssql.Float, req.body.LWP);
+                    request.input('ClosingLB', mssql.Float, req.body.ClosingLB);
+                    request.execute('sp_editUserMonthlyReports').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "Reports edit successfully!", success: true, response: data.recordset });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function senduserreports(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.body);
+                    var request = pool.request();
+                    request.input('Month', mssql.Int, req.body.Month);
+                    request.input('Year', mssql.Int, req.body.Year);
+                    request.input('UserId', mssql.Int, req.body.UserId);
+                    request.execute('sp_sendUserMonthlyReport').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        mailer.sendReportToUser(req);
+                        res.send({ message: "Reports sent successfully!", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
     function getProfileChanges(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("valid token");
@@ -866,9 +957,9 @@ function createSchema(app, mssql, pool2, fs) {
                             }, () => {
                                 mssql.close();
                                 if (req.query.UserId) {
-                                    var response=[];
-                                    resul.forEach((x)=>{
-                                        if(x.userDetail.Id==req.query.UserId){
+                                    var response = [];
+                                    resul.forEach((x) => {
+                                        if (x.userDetail.Id == req.query.UserId) {
                                             response.push(x);
                                         }
                                     })
@@ -910,6 +1001,27 @@ function createSchema(app, mssql, pool2, fs) {
                     if (req.body.Status) {
                         console.log("sp_updateProfileChanges");
                         request.execute('sp_updateProfileChanges').then(function (data, recordsets, returnValue, affected) {
+                            if (req.body.Status == 1) {
+                                let req = { body: data.recordset[0] }
+                                pool2.then((pool) => {
+                                    var request = pool.request();
+                                    console.log("sp_UpdateUserPersonalDetails");
+                                    request.input('userId', mssql.VarChar(2000), req.body.UserId);
+                                    request.input('secondary', mssql.VarChar(2000), req.body.SecondaryNo);
+                                    request.input('bloodgroup', mssql.VarChar(2000), req.body.BloodGroup);
+                                    request.input('bday', mssql.DateTime, req.body.Birthday);
+                                    request.input('bio', mssql.VarChar(2000), req.body.Bio);
+                                    request.input('linkedin', mssql.VarChar(2000), req.body.LinkedIn);
+                                    request.input('insta', mssql.VarChar(2000), req.body.Instagram);
+                                    request.input('fb', mssql.VarChar(2000), req.body.Facebook);
+                                    request.input('twit', mssql.VarChar(2000), req.body.Twitter);
+                                    request.input('ext', mssql.VarChar(2000), req.body.Ext);
+                                    request.execute('sp_UpdateUserPersonalDetails').then(function (data, recordsets, returnValue, affected) {
+                                    }).catch(function (err) {
+                                        console.log(err);
+                                    });
+                                });
+                            }
                             async.eachSeries(education, (_x, callback) => {
                                 var request = pool.request();
                                 request.input('Status', mssql.Int, _x.Status);
