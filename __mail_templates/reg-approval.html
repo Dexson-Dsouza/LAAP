@@ -222,17 +222,24 @@
                 <td bgcolor="#ffffff" style="padding: 30px 40px 20px;">
                     <h2
                         style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 24px; line-height: 125%; color: #0078ff; font-weight: normal;">
-                        Hi Approvers,</h2>
+                        Hi {{username}},</h2>
                 </td>
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
                     style="padding: 0 40px 20px; font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+                    {{#if regDetails.Reason}}
                     <p style="font-size:16px;line-height:24px;color:#4c4c4c">
-                        <strong>{{username}} </strong>
-                        has requested for regularization
-                        of
-                        attendance.</p>
+                        Your
+                        regulare requested has been
+                        rejected</p>
+                    {{else}}
+                    <p style="font-size:16px;line-height:24px;color:#4c4c4c">
+                        Your
+                        regulare requested has been
+                        approved</p>
+                    {{/if}}
+
                 </td>
             </tr>
             <tr>
@@ -242,6 +249,23 @@
                     <p>Following are the details:-</p>
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
                         style="margin: auto; " class="email-container">
+                        <tr>
+                            <td
+                                style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
+                                Approved By </td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
+                                <strong>{{regDetails.DisplayName}}</strong>
+                            </td>
+                        </tr>
+                        {{#if regDetails.Reason}}
+                        <tr>
+                            <td
+                                style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
+                                Comments</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{regDetails.Reason}}
+                            </td>
+                        </tr>
+                        {{/if}}
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
@@ -302,12 +326,13 @@
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
-                    style="padding: 0 40px 40px; font-family: 'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #000000;">
-                    <a href={{loginLink}} style=" color: #2686f1;">
-                        <p style="margin: 0;font-size: 20px;"><span
-                                style="color:#0078ff;display: inline-block;padding: 10px 15px 10px 15px;text-decoration: none;border: 2px solid #0078ff;">
-                                Click here to approve</span></p>
-                    </a>
+                    style=" font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+                    {{#if regDetails.Reason}}
+                    {{else}}
+                    <p style="margin: 0;">
+                        Your Time Logs for {{date}} has been updated sucessfully.
+                    </p>
+                    {{/if}}
                 </td>
             </tr>
             <!-- Background Image with Text : END -->
@@ -330,7 +355,6 @@
                             </tr>
                         </table>
                     </div>
-                 
                 </td>
             </tr> -->
             <!-- Background Image with Text : END -->
@@ -438,4 +462,3 @@
 </body>
 
 </html>
-

@@ -222,92 +222,94 @@
                 <td bgcolor="#ffffff" style="padding: 30px 40px 20px;">
                     <h2
                         style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 24px; line-height: 125%; color: #0078ff; font-weight: normal;">
-                        Hi Approvers,</h2>
+                        Hi <strong>{{aResult.DisplayName}} </strong>,</h2>
                 </td>
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
-                    style="padding: 0 40px 20px; font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-                    <p style="font-size:16px;line-height:24px;color:#4c4c4c">
-                        <strong>{{username}} </strong>
-                        has requested for regularization
-                        of
-                        attendance.</p>
+                    style=" padding: 0 40px 20px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+                    {{#if approved}}
+                    <p style="margin: 0;">Your leave
+                        request has been approved.</p>
+                    {{else}}
+                    <p style="margin: 0;">Your leave
+                        request has been rejected.</p>
+                    {{/if}}
                 </td>
             </tr>
             <tr>
-                <td bgcolor="#ffffff"
-                    style=" font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-
-                    <p>Following are the details:-</p>
+                <td  bgcolor="#ffffff"
+                style=" font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+               
+                    <p >Following are the details:-</p>
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
                         style="margin: auto; " class="email-container">
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Reason for regularize</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{regDetails.Details}}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td> <strong>
-                                    <p style="text-align:center;">
-                                        Biometric Logs</p>
-                                </strong>
+                                Approved By</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
+                                <strong> {{approver.DisplayName}}</strong>
                             </td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                In-Time</td>
+                                Status</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OldInTime}}
+                                {{#if approved}}
+                                APPROVED
+                                {{else}}
+                                REJECTED
+                                {{/if}}
                             </td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Out-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OldOutTime}}
-                            </td>
+                                Start Date</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{from}}</td>
                         </tr>
-
                         <tr>
-                            <td> <strong>
-                                    <p style="text-align:center;">
-                                        Corrected Logs</p>
-                                </strong>
+                            <td
+                                style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
+                                End Date</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{to}}</td>
+                        </tr>
+                        <tr>
+                            <td
+                                style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
+                                Leave Type</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{LeaveDetails.LeaveCategoryname}}
                             </td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                In-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.InTime}}
+                                Reason of Leave</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{LeaveDetails.Details}}
                             </td>
                         </tr>
+                        {{#if approver.Reason}}
                         <tr>
-                            <td
-                                style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Out-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OutTime}}
-                            </td>
+                            <td style="width: 125px;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">Comments</td>
+                            <td style="padding: 5px 5px 5px 5px;">{{approver.Reason}}</td>
                         </tr>
+                        {{/if}}
                     </table>
                 </td>
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
-                    style="padding: 0 40px 40px; font-family: 'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #000000;">
-                    <a href={{loginLink}} style=" color: #2686f1;">
-                        <p style="margin: 0;font-size: 20px;"><span
-                                style="color:#0078ff;display: inline-block;padding: 10px 15px 10px 15px;text-decoration: none;border: 2px solid #0078ff;">
-                                Click here to approve</span></p>
-                    </a>
+                    style=" font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+                    {{#if pendingApprover}}
+                    Your leave still needs to be approved by {{pendingApprover}}.
+                    {{else}}
+                    {{#if approved}}
+                    <p style="margin: 0;">Your leave
+                        is sucessfully approved.</p>
+                    {{/if}}
+                    {{/if}}
                 </td>
             </tr>
             <!-- Background Image with Text : END -->
@@ -330,7 +332,7 @@
                             </tr>
                         </table>
                     </div>
-                 
+                  
                 </td>
             </tr> -->
             <!-- Background Image with Text : END -->
@@ -438,4 +440,3 @@
 </body>
 
 </html>
-

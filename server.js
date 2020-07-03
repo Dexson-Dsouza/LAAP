@@ -24,7 +24,7 @@ var whitelist = [
   "http://admin.infinite-usa.com",
   "http://localhost:8100",
 ];
-var PORT = 3300 | process.env.PORT;
+var PORT = 3400 | process.env.PORT;
 
 // default route
 app.get("/", function (req, res) {
@@ -133,18 +133,18 @@ var sync = require('./__ent/datamigrate.controller');
 //   sync.connectToDatabase2();
 // });
 
-// cron.scheduleJob("*/2 * * * *", function() {
-//   console.log('This runs every 2 minutes');
+// cron.scheduleJob("0 0 1 * *", function() {
+//   console.log('This runs at beginning of month');
 //   sync.IncrementLeaveBal();
 // });
 
 
-// var schedule = require('node-schedule');
+var schedule = require('node-schedule');
 
-// var j = schedule.scheduleJob('0 0 1 * *', function(){
-//     console.log('Your scheduled job at beginning of month');
-//     sync.GenerateReport();
-// });
+var j = schedule.scheduleJob('0 0 1 * *', function(){
+    console.log('Your scheduled job at beginning of month(generate reports)');
+    sync.GenerateReport();
+});
 
 
 

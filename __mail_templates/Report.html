@@ -1,0 +1,117 @@
+<html>
+
+<head>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border: 1px solid black;
+            padding: 0.5%;
+            width: 50%;
+        }
+
+        th {
+            background-color: #fffb00;
+            color: rgb(0, 0, 0);
+        }
+    </style>
+</head>
+
+<body>
+    <p>Dear <strong>{{user.DisplayName}}</strong>,<br><br>
+
+        Please find your updated leave record for the month of {{date}} as follows with the inputs incorporated.<br><br>
+
+        We have tried our best to calculate an error free data; however, will request you to verify the same against
+        your records and let us know in case of any discrepancy in below.<br><br>
+
+        You can either reach out to me on Microsoft Teams, email or on my cell phone.<br><br>
+
+        Failing to submit the same by EOD on {{end_date}}; we will process the Salary as per below data.<br><br>
+    </p>
+    <table>
+        <tr>
+            <th colspan="2" style="text-align: center;">Description</th>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Opening Leave Balance as on 1st {{date}}</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.OpeningLB}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Leaves earned / accrued during {{date}}</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">1.75</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Leaves taken during month of {{date}}</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.LeaveTaken}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Shortfall of Biometric working hours during {{date}}</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{sf}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Leaves adjusted with Shortfall hours</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.LeaveDueToShortfall}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Total Leave deducted (PL + Shortfall, if any)</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.TotalLeave}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Leave Without Pay for the month of {{date}}<br><br>
+                        (if Leaves Taken>Leaves Accrued OR Leaves taken during Probation AND/OR Shortfalls when no PL
+                        Balance)</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.LWP}}</td>
+        </tr>
+        <tr>
+            <td>
+                <ul>
+                    <li>Closing Leave Balance as on {{last_date}}</li>
+                </ul>
+            </td>
+            <td style="text-align: center;">{{report.ClosingLB}}</td>
+        </tr>
+    </table><br>
+
+    <p>
+        Kindly confirm.<br>
+        Thanks<br>
+        MDC HR Team<br>
+    </p>
+</body>
+
+</html>

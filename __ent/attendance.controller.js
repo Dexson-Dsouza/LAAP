@@ -123,7 +123,7 @@ function createSchema(app, mssql, pool2) {
                     request
                         .execute("sp_EditEmployeeAttendance")
                         .then(function (data, recordsets, returnValue, affected) {
-                            // mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode);
+                            mailer.sendMailAfterRegReqAdded(req.body.AttendanceDate, req.body.EmployeeCode,req.body.AttendanceLogId);
                             mssql.close();
                             res.send({
                                 message: "Edit request added successfully!",
@@ -221,6 +221,14 @@ function createSchema(app, mssql, pool2) {
                         });
                         return;
                     }
+
+                    if (req.body.approved == 0 && req.body.reason == null) {
+                        res.send({
+                            message: "invalid parameters(Reason is required when regularize rejection.)",
+                            success: false,
+                        });
+                        return;
+                    }
                     request.input("trackId", mssql.Int, parseInt(req.body.trackId));
                     request.input("approved", mssql.Int, parseInt(req.body.approved));//
                     request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));//
@@ -241,7 +249,7 @@ function createSchema(app, mssql, pool2) {
                                 message: "request status changed successfully!",
                                 success: true,
                             });
-                            mailer.sendMailAfterRegReqApprove(req.body.trackId, req.body.AttendanceDate, req.body.approved);
+                            mailer.sendMailAfterRegReqApprove(req.body.trackId, req.body.AttendanceDate, req.body.AttendanceLogId);
                         })
                         .catch(function (err) {
                             console.log(err);

@@ -64,17 +64,21 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
     var moment = require('moment');
-    var line = undefined
-    if (moment(bResult.EndDate).format("MM-DD-YYYY") == moment(bResult.StartDate).format("MM-DD-YYYY")) {
-      line = 'on <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
-    } else {
-      line = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format("'MMM DD YYYY'") + ' </strong>';
+    var line1 = 'on <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
+    var line2 = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format("'MMM DD YYYY'") + ' </strong>';
+    var oneday = false;
+    if (moment(bResult.EndDate, 'YYYY-MM-DD').format("MM-DD-YYYY") == moment(bResult.StartDate, 'YYYY-MM-DD').format("MM-DD-YYYY")) {
+      oneday = true;
     }
-    var innertext = '<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>' + aResult.DisplayName + '</strong> has applied for leave ' + line + '. Please review and approve.</p>'
+    // var innertext = '<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>' + aResult.DisplayName + '</strong> has applied for leave ' + line + '. Please review and approve.</p>'
     var replacements = {
       username: aResult.DisplayName,
-      line: line,
-      innertext: innertext,
+      startdate: moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      oneday: oneday,
+      LeaveCategoryname: bResult.LeaveCategoryname,
+      LeaveDetails:bResult,
+      // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
     triggerMail("leave-created.html", replacements, cResult.join(","), "New Leave Request");
@@ -99,15 +103,24 @@ function sendMailAfterApproveLeave(userId, leaveId) {
   console.log("==========Send Mail After Approve Leave==========");
   console.log(userId);
   console.log(leaveId);
-  var result1;
+  var result1;//leave details
+  var result2;//approvers
   async.waterfall([
     function (callback) {
+      getLeaveApproverDetails(callback, leaveId);
+    },
+    function (bResult, callback) {
+      console.log('bResult')
+      console.log(bResult)
+      result2 = bResult;
+      console.log('---------------------')
       getLeaveDetails(callback, leaveId);
     },
     function (aResult, callback) {
       console.log('aResult')
       console.log(aResult)
       result1 = aResult;
+      console.log('---------------------')
       getPostedByUserDetails(callback, aResult.Userid);
     }
   ], function (err, results) {
@@ -119,56 +132,87 @@ function sendMailAfterApproveLeave(userId, leaveId) {
     if (results.PushId) {
       aPushId.push(results.PushId);
     }
+    var approver = result2.find((x) => {
+      return x.UserId == userId;
+    })
+    var pendingApprover = [];
+    if (approver.Status == 1 && result1.Status != 1) {
+      result2.forEach((x) => {
+        if (x.Status == 3) {
+          pendingApprover.push(x.DisplayName);
+        }
+      })
+    }
     var bResult = results;
-    console.log(aResult);
-    console.log('---------------------')
-    console.log(bResult);
-    console.log('---------------------')
     var moment = require('moment');
     var replacements = {
-      from: moment(result1.StartDate).format('YYYY-MM-DD'),
-      to: moment(result1.EndDate).format('YYYY-MM-DD'),
-      username: results.DisplayName
+      from: moment(result1.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      to: moment(result1.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      bResult: bResult,
+      aResult: results,
+      LeaveDetails: result1,
+      approved: approver.Status == 1 ? true : false,
+      pendingApprover: pendingApprover.join(','),
+      approver: approver
     };
-    if (result1.Status == 1) {
-      triggerMail("leave-approved.html", replacements, aResult.join(","), "Leave Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Leave Detail',
-            body: 'Your leave is approved.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
-    } else if (result1.Status == 2) {
-      triggerMail("leave-reject.html", replacements, aResult.join(","), "Leave Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Leave Detail',
-            body: 'Your leave is rejected.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
+    var subject;
+    triggerMail("leave-approval.html", replacements, aResult.join(","), "Your Leave Request has been updated by " + approver.DisplayName);
+    console.log("*******PushId Length****", aPushId.length);
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'Leave Detail',
+          body: 'Your leave is approved.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "job",
+          // params: jobId,
+        }
+      };
+      triggerPushNotification(message);
     }
+
   });
 };
+
+function getLeaveApproverDetails(callback, leaveId) {
+  pool2.then(pool => {
+    var request = pool.request();
+    request.query("select *,u.Id as UserId  from leaveDetails l left join users u on l.ApproverId=u.Id where leaveid =" + leaveId).then(function (data) {
+      mssql.close();
+      console.log("======================leaveDetails============================");
+      console.log(data.recordset)
+      console.log("======================leaveDetails==========================");
+
+      callback(null, data.recordset);
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
+
+
+function getWfhApproverDetails(callback, wfhid) {
+  pool2.then(pool => {
+    var request = pool.request();
+    request.query("select *,u.Id as UserId  from employeewfhdetails w left join users u on w.ApproverId=u.Id where wfhid =" + wfhid).then(function (data) {
+      mssql.close();
+      console.log("======================employeewfhdetails============================");
+      console.log(data.recordset)
+      console.log("======================employeewfhdetails==========================");
+
+      callback(null, data.recordset);
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
 
 
 function getLeaveDetails(callback, leaveId) {
@@ -312,7 +356,6 @@ function getLeaveApprovers(callback, userId, diffDays) {
 
     }).catch(function (err) {
       console.log(err);
-      res.send(err);
     });
   });
 
@@ -338,15 +381,18 @@ function sendMailAfterWfhAdded(wfhId, userId) {
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
     var line = undefined
-    if (moment(bResult.EndDate).format("MM-DD-YYYY") == moment(bResult.StartDate).format("MM-DD-YYYY")) {
-      line = "on <strong>" + moment(bResult.EndDate).format('MMM DD YYYY') + " </strong>";
-    } else {
-      line = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
+    var oneday = false;
+    if (moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY") == moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY")) {
+      oneday = true;
     }
     var replacements = {
       username: aResult.DisplayName,
       line: line,
-      loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+      startdate: moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      oneday: oneday,
+      loginLink: ICS_ADMIN_URL + "/dashboard/wfh",
+      WfhDetails:bResult
     };
 
     triggerMail("wfh-created.html", replacements, cResult.join(","), "New Work-from-home Request");
@@ -389,6 +435,24 @@ function getWfhDetails(callback, wfhId) {
 }
 
 
+function getRegDetails(callback, AttendanceLogId) {
+  pool2.then(pool => {
+    var request = pool.request();
+    request.input("AttendanceLogId", mssql.Int, AttendanceLogId);
+    request.execute("getRegDetails").then(function (data) {
+      mssql.close();
+      console.log("===================getRegDetails=========================================");
+      console.log(data.recordset[0])
+      console.log("======================getRegDetails======================================");
+
+      callback(null, data.recordset[0]);
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
 function getWfhApprovers(callback, userId) {
   console.log("Get Approvers by userId = ", userId);
   pool2.then((pool) => {
@@ -422,12 +486,19 @@ function getWfhApprovers(callback, userId) {
 }
 
 function sendMailAfterApproveWfh(userId, wfhId) {
-  console.log("==========Send Mail After WFH Leave==========");
+  console.log("==========Send Mail After WFH ==========");
   console.log(userId);
   console.log(wfhId);
   var result1;
+  var result2;//approvers
   async.waterfall([
     function (callback) {
+      getWfhApproverDetails(callback, wfhId);
+    },
+    function (bResult, callback) {
+      console.log('bResult')
+      console.log(bResult)
+      result2 = bResult;
       getWfhDetails(callback, wfhId);
     },
     function (aResult, callback) {
@@ -445,57 +516,53 @@ function sendMailAfterApproveWfh(userId, wfhId) {
     if (results.PushId) {
       aPushId.push(results.PushId);
     }
-    var bResult = results;
-    console.log(aResult);
-    console.log('---------------------')
-    console.log(bResult);
-    console.log('---------------------')
-    var replacements = {
-      from: moment(result1.StartDate).format('YYYY-MM-DD'),
-      to: moment(result1.EndDate).format('YYYY-MM-DD'),
-      username: results.DisplayName
-    };
-    if (result1.Status == 1) {
-      triggerMail("wfh-approved.html", replacements, aResult.join(","), "Work-from-home Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Work-from-home Detail',
-            body: 'Your WFH request is approved.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
-    } else if (result1.Status == 2) {
-      triggerMail("wfh-reject.html", replacements, aResult.join(","), "Work-from-home Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Work-from-home Detail',
-            body: 'Your WFH request is rejected.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
+    var approver = result2.find((x) => {
+      return x.UserId == userId;
+    })
+
+    var pendingApprover = [];
+    if (approver.Status == 1 && result1.Status != 1) {
+      result2.forEach((x) => {
+        if (x.Status == 3) {
+          pendingApprover.push(x.DisplayName);
+        }
+      })
     }
+
+    var bResult = results;
+    var replacements = {
+      from: moment(result1.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('YYYY-MM-DD'),
+      to: moment(result1.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('YYYY-MM-DD'),
+      username: results.DisplayName,
+      bResult: bResult,
+      aResult: results,
+      wfhDetails: result1,
+      approved: approver.Status == 1 ? true : false,
+      pendingApprover: pendingApprover.join(','),
+      approver: approver
+    };
+    triggerMail("wfh-approval.html", replacements, aResult.join(","), "Your Work-from-home Request has been updated by " + approver.DisplayName);
+    console.log("*******PushId Length****", aPushId.length);
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'Work-from-home Detail',
+          body: 'Your WFH request is approved.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "job",
+          // params: jobId,
+        }
+      };
+      triggerPushNotification(message);
+    }
+
   });
 };
 
-function sendMailAfterRegReqAdded(date, empCode) {
+function sendMailAfterRegReqAdded(date, empCode, AttendanceLogId) {
   console.log("==========Send Mail After Reg Req Added==========");
   console.log(date);
   console.log(empCode);
@@ -505,15 +572,24 @@ function sendMailAfterRegReqAdded(date, empCode) {
     },
     function (callback) {
       getRegApprovers(callback, empCode);
+    },
+    function (callback) {
+      getRegDetails(callback, AttendanceLogId);
     }
   ], function (err, results) {
     var aResult = results[0];
     var cResult = results[1].emailId;
     var aPushId = results[1].pushId;
+    var regDetails = results[2];
+    regDetails.OldInTime = moment(regDetails.OldInTime).format(' h:mm A')
+    regDetails.OldOutTime = moment(regDetails.OldOutTime).format(' h:mm A')
+    regDetails.InTime = moment(regDetails.InTime).format(' h:mm A')
+    regDetails.OutTime = moment(regDetails.OutTime).format(' h:mm A')
     var replacements = {
       username: aResult.DisplayName,
-      date: moment(date).format("'MMM DD YYYY'"),
-      loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+      date: moment(date, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      loginLink: ICS_ADMIN_URL + "/dashboard/regularize-requests",
+      regDetails: regDetails
     };
 
     triggerMail("reg-request.html", replacements, cResult.join(","), "New Regularize Request");
@@ -534,62 +610,49 @@ function sendMailAfterRegReqAdded(date, empCode) {
   });
 };
 
-function sendMailAfterRegReqApprove(trackId, date, status) {
+function sendMailAfterRegReqApprove(trackId, date, AttendanceLogId) {
   console.log("==========Send Mail After Reg Req Approve/reject==========");
   console.log(trackId);
   console.log(date);
   async.series([
     function (callback) {
       getUserDetailsFromRegId(callback, trackId);
+    },
+    function (callback) {
+      getRegDetails(callback, AttendanceLogId);
     }
   ], function (err, results) {
     var aResult = results[0].data;
     var cResult = results[0].emailId;
     var aPushId = results[0].pushId;
+    var regDetails = results[1];
+    regDetails.OldInTime = moment(regDetails.OldInTime).format(' h:mm A')
+    regDetails.OldOutTime = moment(regDetails.OldOutTime).format(' h:mm A')
+    regDetails.InTime = moment(regDetails.InTime).format(' h:mm A')
+    regDetails.OutTime = moment(regDetails.OutTime).format(' h:mm A')
     var replacements = {
       username: aResult.DisplayName,
-      date: moment(date).format("'MMM DD YYYY'"),
+      date: moment(date, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+      regDetails: regDetails,
     };
-
-    if (status == 1) {
-      triggerMail("reg-approved.html", replacements, cResult.join(","), "Regularize Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Regularize Request Updates',
-            body: 'Your Regularize request is approved.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
-    } else if (status == 0) {
-      triggerMail("reg-reject.html", replacements, cResult.join(","), "Regularize Request Updates");
-      console.log("*******PushId Length****", aPushId.length);
-      if (aPushId.length) {
-        var message = {
-          registration_ids: aPushId,
-          notification: {
-            title: 'Regularize Request Updates',
-            body: 'Your Regularize request is rejected.',
-            click_action: "FCM_PLUGIN_ACTIVITY",
-          },
-          data: {
-            // page: "job",
-            // params: jobId,
-          }
-        };
-        triggerPushNotification(message);
-      }
+    triggerMail("reg-approval.html", replacements, cResult.join(","), "Your Regularize Request has been updated by " + regDetails.DisplayName);
+    console.log("*******PushId Length****", aPushId.length);
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'Regularize Request Updates',
+          body: 'Your Regularize request is approved.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "job",
+          // params: jobId,
+        }
+      };
+      triggerPushNotification(message);
     }
-
   });
 };
 
@@ -602,7 +665,6 @@ function getUserDetailsFromRegId(callback, trackId) {
       console.log(data.recordset[0])
       console.log("============================================================");
       mssql.close();
-      console.log(data.recordset);
       var __o = data.recordset;
       var emailId = [];
       var pushId = [];
@@ -615,7 +677,7 @@ function getUserDetailsFromRegId(callback, trackId) {
           }
         }
       }
-      var c = { data: data.recordset, emailId: emailId, pushId: pushId }
+      var c = { data: data.recordset[0], emailId: emailId, pushId: pushId }
       callback(null, c);
     }).catch(function (err) {
       console.log(err);
@@ -722,6 +784,136 @@ function getuserreports(callback, req) {
   });
 }
 
+function sendMailAfterCancelReq(leaveId, userId) {
+  console.log("==========Send Mail After Leave Cancel Req==========");
+  console.log(leaveId);
+  console.log(userId);
+  async.series([
+    function (callback) {
+      getPostedByUserDetails(callback, userId);
+    },
+    function (callback) {
+      getLeaveDetails(callback, leaveId);
+    },
+    function (callback) {
+      getLeaveApprovers(callback, userId, 0);
+    }
+  ], function (err, results) {
+    var aResult = results[0];
+    var bResult = results[1];
+    var cResult = results[2].emailId;
+    var aPushId = results[2].pushId;
+    var moment = require('moment');
+    // var innertext = '<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>' + aResult.DisplayName + '</strong> has applied for leave ' + line + '. Please review and approve.</p>'
+    var replacements = {
+      username: aResult.DisplayName,
+      startdate: moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      LeaveCategoryname: bResult.LeaveCategoryname,
+      leaveDetails:bResult,
+      // innertext: innertext,
+      loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+    };
+    console.log('rep');
+    console.log(replacements)
+    triggerMail("cancel-request.html", replacements, cResult.join(","), "Leave Cancellation Request");
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'New Leave Request',
+          body: aResult.DisplayName + ' applied for leave. Please review and approve.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "approve-job",
+        }
+      }
+      triggerPushNotification(message);
+    }
+  });
+};
+
+
+
+function sendMailAfterApproveCancellation(userId, leaveId) {
+  console.log("==========Send Mail After Approve Cancellation==========");
+  console.log(userId);
+  console.log(leaveId);
+  var result1;//leave details
+  var result2;//approvers
+  async.waterfall([
+    function (callback) {
+      getLeaveApproverDetails(callback, leaveId);
+    },
+    function (bResult, callback) {
+      console.log('bResult')
+      console.log(bResult)
+      result2 = bResult;
+      console.log('---------------------')
+      getLeaveDetails(callback, leaveId);
+    },
+    function (aResult, callback) {
+      console.log('aResult')
+      console.log(aResult)
+      result1 = aResult;
+      console.log('---------------------')
+      getPostedByUserDetails(callback, aResult.Userid);
+    }
+  ], function (err, results) {
+    console.log(results);
+    console.log('---------------------')
+    var aResult = [];
+    aResult.push(results.EmailAddress);
+    var aPushId = [];
+    if (results.PushId) {
+      aPushId.push(results.PushId);
+    }
+    var approver = result2.find((x) => {
+      return x.UserId == userId;
+    })
+    var pendingApprover = [];
+    if (approver.Status == 1 && result1.Status != 4) {
+      result2.forEach((x) => {
+        if (x.Status == 4) {
+          pendingApprover.push(x.DisplayName);
+        }
+      })
+    }
+    var bResult = results;
+    var moment = require('moment');
+    var replacements = {
+      from: moment(result1.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      to: moment(result1.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      bResult: bResult,
+      aResult: results,
+      LeaveDetails: result1,
+      approved: approver.Status == 1 ? true : false,
+      pendingApprover: pendingApprover.join(','),
+      approver: approver
+    };
+    var subject;
+    triggerMail("cancel-approval.html", replacements, aResult.join(","), "Your Leave Cancellation has been updated by " + approver.DisplayName);
+    console.log("*******PushId Length****", aPushId.length);
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'Leave Detail',
+          body: 'Your leave is approved.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "job",
+          // params: jobId,
+        }
+      };
+      triggerPushNotification(message);
+    }
+
+  });
+};
+
 function triggerMail(tmplName, replacements, to, subject, attachments) {
   readHTMLFile("./__mail_templates/" + tmplName, function (err, html) {
     var template = handlebars.compile(html);
@@ -731,6 +923,7 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
     var mailOptions = {
       from: '"Infinite Computing Systems " <no-reply@infinite-usa.com>', // sender address
       to: to, // list of receivers
+      //  to: 'djdsouza@infinite-usa.com',
       subject: subject, // Subject line
       html: htmlToSend
     };
@@ -740,15 +933,15 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
       mailOptions.attachments = attachments;
     }
 
-    // transporter.sendMail(mailOptions, (error, info) => {
-    //   if (error) {
-    //     return console.log(error);
-    //   }
-    //   console.log("Message sent: %s", info.messageId);
-    //   console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-    //   console.log("Mail Sent to: %s", to);
-    //   console.log("Mail Subject is:", subject);
-    // });
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        return console.log(error);
+      }
+      console.log("Message sent: %s", info.messageId);
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("Mail Sent to: %s", to);
+      console.log("Mail Subject is:", subject);
+    });
 
 
   });
@@ -775,6 +968,9 @@ exports.sendMailAfterApproveWfh = sendMailAfterApproveWfh;
 exports.sendMailAfterRegReqAdded = sendMailAfterRegReqAdded;
 exports.sendMailAfterRegReqApprove = sendMailAfterRegReqApprove;
 exports.sendReportToUser = sendReportToUser;
+exports.sendMailAfterCancelReq = sendMailAfterCancelReq;
+exports.sendMailAfterApproveCancellation = sendMailAfterApproveCancellation;
+
 
 
 // exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;

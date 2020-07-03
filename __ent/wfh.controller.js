@@ -231,6 +231,7 @@ function createSchema(app, mssql, pool2) {
                     } else {
                         updateStatusofWfh(req, res, data.recordset);
                     }
+                    mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -245,15 +246,15 @@ function createSchema(app, mssql, pool2) {
             console.log(req.body);
             console.log('reject');
             var query = "update EmployeeWfh set status = 2 where Id = " + req.body.wfhId;
+            request.input("wfhId", mssql.Int, req.body.wfhId);
             request
-                .query(query)
+                .execute("sp_RejectWfh")
                 .then(function (data, recordsets, returnValue, affected) {
                     mssql.close();
                     res.send({
                         message: "Wfh Status Updated successfully!",
                         success: true,
                     });
-                    mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -279,7 +280,6 @@ function createSchema(app, mssql, pool2) {
                             message: "Wfh Status Updated successfully!",
                             success: true,
                         });
-                        mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                     })
                     .catch(function (err) {
                         console.log(err);
@@ -305,7 +305,6 @@ function createSchema(app, mssql, pool2) {
                                 message: "Wfh Status Updated successfully!",
                                 success: true,
                             });
-                            mailer.sendMailAfterApproveWfh(req.body.userId, req.body.wfhId);
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -552,7 +551,7 @@ function createSchema(app, mssql, pool2) {
         pool2.then(pool => {
             var request = pool.request();
             console.log(req.body);
-            console.log('sp_ApproveRejectLeave');
+            console.log('sp_ApproveRejectWfh');
             if ((req.body.userId == undefined || isNaN(parseInt(req.body.userId))) ||
                 (req.body.wfhId == undefined || isNaN(parseInt(req.body.wfhId))) ||
                 (req.body.status == undefined || isNaN(parseInt(req.body.status)))) {

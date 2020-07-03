@@ -227,74 +227,51 @@
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
-                    style="padding: 0 40px 20px; font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-                    <p style="font-size:16px;line-height:24px;color:#4c4c4c">
-                        <strong>{{username}} </strong>
-                        has requested for regularization
-                        of
-                        attendance.</p>
+                    style=" padding: 0 40px 20px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+                    <strong>{{username}}</strong>
+                    has requested for Leave-Cancellation.
                 </td>
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
                     style=" font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
 
-                    <p>Following are the details:-</p>
+                    <p>Following are the Leave details:-</p>
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="600"
                         style="margin: auto; " class="email-container">
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Reason for regularize</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{regDetails.Details}}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td> <strong>
-                                    <p style="text-align:center;">
-                                        Biometric Logs</p>
-                                </strong>
+                                Leave Type</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
+                                <strong> {{LeaveCategoryname}}</strong>
                             </td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                In-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OldInTime}}
+                                Reason for Leave</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{leaveDetails.Details}}
                             </td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Out-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OldOutTime}}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td> <strong>
-                                    <p style="text-align:center;">
-                                        Corrected Logs</p>
-                                </strong>
-                            </td>
+                                Start Date</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{startdate}}</td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                In-Time</td>
-                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.InTime}}
-                            </td>
+                                End Date</td>
+                            <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{endate}}</td>
                         </tr>
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Out-Time</td>
+                                Reason for Cancellation</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">
-                                {{regDetails.OutTime}}
+                                {{leaveDetails.CancelReason}}
                             </td>
                         </tr>
                     </table>
@@ -302,7 +279,7 @@
             </tr>
             <tr>
                 <td bgcolor="#ffffff"
-                    style="padding: 0 40px 40px; font-family: 'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #000000;">
+                    style="padding: 10px 10px 10px; font-family: 'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #000000;">
                     <a href={{loginLink}} style=" color: #2686f1;">
                         <p style="margin: 0;font-size: 20px;"><span
                                 style="color:#0078ff;display: inline-block;padding: 10px 15px 10px 15px;text-decoration: none;border: 2px solid #0078ff;">
@@ -330,7 +307,7 @@
                             </tr>
                         </table>
                     </div>
-                 
+                   
                 </td>
             </tr> -->
             <!-- Background Image with Text : END -->
@@ -438,4 +415,3 @@
 </body>
 
 </html>
-
