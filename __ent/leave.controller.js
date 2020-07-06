@@ -87,13 +87,14 @@ function createSchema(app, mssql, pool2) {
                     var oneDay = 24 * 60 * 60 * 1000;
                     var startDate = new Date(req.body.startDate);
                     var endDate = new Date(req.body.endDate);
-                    var diffDays = Math.round(Math.abs((startDate.getTime() - endDate.getTime()) / (oneDay)));
+                    var diffDays = Math.round(((endDate.getTime() - startDate.getTime()) / (oneDay)));
                     console.log(diffDays);
-                    if(diffDays<0){
+                    if (diffDays < 0) {
                         res.send({
                             message: "invalid start and end date for leave",
                             success: false,
                         });
+                        return;
                     }
 
                     if (parseInt(req.body.leaveCategory) == 5) {

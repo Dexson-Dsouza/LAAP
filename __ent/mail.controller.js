@@ -63,6 +63,9 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
     var bResult = results[1];
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
+    var names = [];
+    names = results[2].names;
+
     var moment = require('moment');
     var line1 = 'on <strong>' + moment(bResult.EndDate).format('MMM DD YYYY') + ' </strong>';
     var line2 = 'from <strong>' + moment(bResult.StartDate).format('MMM DD YYYY') + ' </strong> to <strong>' + moment(bResult.EndDate).format("'MMM DD YYYY'") + ' </strong>';
@@ -77,7 +80,8 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
       endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       oneday: oneday,
       LeaveCategoryname: bResult.LeaveCategoryname,
-      LeaveDetails:bResult,
+      LeaveDetails: bResult,
+      names: names.join(","),
       // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
     };
@@ -282,11 +286,13 @@ function getLeaveApprovers(callback, userId, diffDays) {
       var __o = data.recordset;
       var emailId = [];
       var pushId = [];
+      var names = [];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
           if (parseInt(__o[i].Id) != parseInt(userId)) {
             console.log("email user");
             emailId.push(__o[i].EmailAddress);
+            names.push(__o[i].DisplayName);
             if (__o[i].PushId != null) {
               pushId.push(__o[i].PushId);
             }
@@ -331,6 +337,7 @@ function getLeaveApprovers(callback, userId, diffDays) {
                       if (parseInt(user.Id) != parseInt(userId)) {
                         console.log("email user");
                         emailId.push(user.EmailAddress);
+                        names.push(user.DisplayName);
                         if (user.PushId != null) {
                           pushId.push(user.PushId);
                         }
@@ -343,14 +350,14 @@ function getLeaveApprovers(callback, userId, diffDays) {
                   }, () => {
                     mssql.close();
                     console.log('hod added');
-                    var c = { emailId: emailId, pushId: pushId }
+                    var c = { emailId: emailId, pushId: pushId, names: names }
                     callback(null, c);
                   })
                 })
             })
         })
       } else {
-        var c = { emailId: emailId, pushId: pushId }
+        var c = { emailId: emailId, pushId: pushId, names: names }
         callback(null, c);
       }
 
@@ -380,6 +387,7 @@ function sendMailAfterWfhAdded(wfhId, userId) {
     var bResult = results[1];
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
+    var names = results[2].names;
     var line = undefined
     var oneday = false;
     if (moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY") == moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY")) {
@@ -392,7 +400,8 @@ function sendMailAfterWfhAdded(wfhId, userId) {
       endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       oneday: oneday,
       loginLink: ICS_ADMIN_URL + "/dashboard/wfh",
-      WfhDetails:bResult
+      WfhDetails: bResult,
+      names: names.join(","),
     };
 
     triggerMail("wfh-created.html", replacements, cResult.join(","), "New Work-from-home Request");
@@ -465,18 +474,20 @@ function getWfhApprovers(callback, userId) {
       var __o = data.recordset;
       var emailId = [];
       var pushId = [];
+      var names = [];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
           if (parseInt(__o[i].Id) != parseInt(userId)) {
             console.log("email user");
             emailId.push(__o[i].EmailAddress);
+            names.push(__o[i].DisplayName);
             if (__o[i].PushId != null) {
               pushId.push(__o[i].PushId);
             }
           }
         }
       }
-      var c = { emailId: emailId, pushId: pushId }
+      var c = { emailId: emailId, pushId: pushId, names: names }
       callback(null, c);
     }).catch(function (err) {
       console.log(err);
@@ -580,6 +591,7 @@ function sendMailAfterRegReqAdded(date, empCode, AttendanceLogId) {
     var aResult = results[0];
     var cResult = results[1].emailId;
     var aPushId = results[1].pushId;
+    var names = results[1].names;
     var regDetails = results[2];
     regDetails.OldInTime = moment(regDetails.OldInTime).format(' h:mm A')
     regDetails.OldOutTime = moment(regDetails.OldOutTime).format(' h:mm A')
@@ -589,7 +601,8 @@ function sendMailAfterRegReqAdded(date, empCode, AttendanceLogId) {
       username: aResult.DisplayName,
       date: moment(date, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       loginLink: ICS_ADMIN_URL + "/dashboard/regularize-requests",
-      regDetails: regDetails
+      regDetails: regDetails,
+      names: names.join(",")
     };
 
     triggerMail("reg-request.html", replacements, cResult.join(","), "New Regularize Request");
@@ -697,18 +710,20 @@ function getRegApprovers(callback, empCode) {
       var __o = data.recordset;
       var emailId = [];
       var pushId = [];
+      var names = [];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
           if ((__o[i].EmployeeCode) != empCode) {
             console.log("email user");
             emailId.push(__o[i].EmailAddress);
+            names.push(__o[i].DisplayName);
             if (__o[i].PushId != null) {
               pushId.push(__o[i].PushId);
             }
           }
         }
       }
-      var c = { emailId: emailId, pushId: pushId }
+      var c = { emailId: emailId, pushId: pushId, names: names }
       callback(null, c);
     }).catch(function (err) {
       console.log(err);
@@ -803,6 +818,7 @@ function sendMailAfterCancelReq(leaveId, userId) {
     var bResult = results[1];
     var cResult = results[2].emailId;
     var aPushId = results[2].pushId;
+    var names = results[2].names;
     var moment = require('moment');
     // var innertext = '<p style="font-size:16px;line-height:24px;color:#4c4c4c"><strong>' + aResult.DisplayName + '</strong> has applied for leave ' + line + '. Please review and approve.</p>'
     var replacements = {
@@ -810,9 +826,10 @@ function sendMailAfterCancelReq(leaveId, userId) {
       startdate: moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
       LeaveCategoryname: bResult.LeaveCategoryname,
-      leaveDetails:bResult,
+      leaveDetails: bResult,
       // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+      names: names.join(",")
     };
     console.log('rep');
     console.log(replacements)
