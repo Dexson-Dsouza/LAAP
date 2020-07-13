@@ -9,7 +9,8 @@ var FCM = require('fcm-push');
 var serverKey = undefined;
 var fcm = new FCM('AAAAEorCvMk:APA91bFps9mtelVcroviLVhC3sW0mcWf6Pa4bB_WO3TT1KeR4lYnocXXXkYMflLg1wiC6g8v9e7iw_WTYLEm7FoM0yiPx_2bBIYXgT7OtfOU1CgHvAC0Je4_ngRBju_IUUsO5nHW2Z0V');
 var moment = require('moment');
-
+const { ident } = require("pg-format");
+var HR_mail = 'djdsouza@infinite-usa.com'
 var transporter = nodemailer.createTransport({
   host: "Infiniteusa-com02b.mail.protection.outlook.com",
   port: 25,
@@ -84,6 +85,7 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
       names: names.join(","),
       // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
+      CC: HR_mail
     };
     triggerMail("leave-created.html", replacements, cResult.join(","), "New Leave Request");
     if (aPushId.length) {
@@ -157,7 +159,8 @@ function sendMailAfterApproveLeave(userId, leaveId) {
       LeaveDetails: result1,
       approved: approver.Status == 1 ? true : false,
       pendingApprover: pendingApprover.join(','),
-      approver: approver
+      approver: approver,
+      CC: HR_mail
     };
     var subject;
     triggerMail("leave-approval.html", replacements, aResult.join(","), "Your Leave Request has been updated by " + approver.DisplayName);
@@ -287,12 +290,14 @@ function getLeaveApprovers(callback, userId, diffDays) {
       var emailId = [];
       var pushId = [];
       var names = [];
+      var userid=[];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
           if (parseInt(__o[i].Id) != parseInt(userId)) {
             console.log("email user");
             emailId.push(__o[i].EmailAddress);
             names.push(__o[i].DisplayName);
+            userid.push(__o[i].Id);
             if (__o[i].PushId != null) {
               pushId.push(__o[i].PushId);
             }
@@ -302,7 +307,7 @@ function getLeaveApprovers(callback, userId, diffDays) {
       if (diffDays > 2) {
         pool2.then(pool => {
           var request = pool.request();
-          var query = "select UserId from [EmployeeDeptMapper] where Deptid =(select DeptId from EmployeeDeptMapper where UserId=" + userId + ") and Roleid=1"
+          var query = "select UserId from [EmployeeDeptMapper] where Deptid =(select DeptId from EmployeeDeptMapper where UserId=" + userId + ") and Roleid=1 and isDeleted =0"
           request
             .query(query)
             .then(function (data, recordsets, returnValue, affected) {
@@ -316,16 +321,17 @@ function getLeaveApprovers(callback, userId, diffDays) {
                   for (var x of data2.recordset) {
                     mang.push(x.UserId);
                   }
-                  var arr = [];
-                  console.log('manager list = ')
-                  console.log(mang);
-                  console.log('hod list = ')
-                  console.log(data.recordset);
-                  for (var d of data.recordset) {
-                    if (d.UserId != userId && !mang.includes(d.UserId)) {
-                      arr.push(d);
-                    }
-                  }
+                  console.log(mang)
+                  var arr = mang;
+                  // console.log('manager list = ')
+                  // console.log(mang);
+                  // console.log('hod list = ')
+                  // console.log(data.recordset);
+                  // for (var d of data.recordset) {
+                  //   if (d.UserId != userId && !mang.includes(d.UserId)) {
+                  //     arr.push(d);
+                  //   }
+                  // }
                   console.log('fin list = ')
                   console.log(arr);
 
@@ -336,10 +342,14 @@ function getLeaveApprovers(callback, userId, diffDays) {
                       var user = data.recordset[0];
                       if (parseInt(user.Id) != parseInt(userId)) {
                         console.log("email user");
-                        emailId.push(user.EmailAddress);
-                        names.push(user.DisplayName);
+                        if (!emailId.includes(user.EmailAddress)) {
+                          emailId.push(user.EmailAddress);
+                          names.push(user.DisplayName);
+                        }
                         if (user.PushId != null) {
-                          pushId.push(user.PushId);
+                          if (!pushId.includes(user.PushId)) {
+                            pushId.push(user.PushId);
+                          }
                         }
                       }
                       callback();
@@ -402,6 +412,7 @@ function sendMailAfterWfhAdded(wfhId, userId) {
       loginLink: ICS_ADMIN_URL + "/dashboard/wfh",
       WfhDetails: bResult,
       names: names.join(","),
+      CC: HR_mail
     };
 
     triggerMail("wfh-created.html", replacements, cResult.join(","), "New Work-from-home Request");
@@ -550,7 +561,8 @@ function sendMailAfterApproveWfh(userId, wfhId) {
       wfhDetails: result1,
       approved: approver.Status == 1 ? true : false,
       pendingApprover: pendingApprover.join(','),
-      approver: approver
+      approver: approver,
+      CC: HR_mail
     };
     triggerMail("wfh-approval.html", replacements, aResult.join(","), "Your Work-from-home Request has been updated by " + approver.DisplayName);
     console.log("*******PushId Length****", aPushId.length);
@@ -763,7 +775,8 @@ function sendReportToUser(req) {
       date: date.format('MMMM YYYY'),
       end_date: end_date.format('Do MMMM YYYY'),
       last_date: date.endOf('month').format('Do MMMM YYYY'),
-      sf: hours > 0 ? hours + " Hrs " + mins + "and Mins" : mins + " Mins"
+      sf: hours > 0 ? hours + " Hrs " + mins + "and Mins" : mins + " Mins",
+      CC: HR_mail
     };
     triggerMail("Report.html", replacements, bResult.EmailAddress, "Leave & Attendance - " + date.format('MMMM YYYY'));
     // if (aPushId.length) {
@@ -829,7 +842,8 @@ function sendMailAfterCancelReq(leaveId, userId) {
       leaveDetails: bResult,
       // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
-      names: names.join(",")
+      names: names.join(","),
+      CC: HR_mail
     };
     console.log('rep');
     console.log(replacements)
@@ -907,7 +921,8 @@ function sendMailAfterApproveCancellation(userId, leaveId) {
       LeaveDetails: result1,
       approved: approver.Status == 1 ? true : false,
       pendingApprover: pendingApprover.join(','),
-      approver: approver
+      approver: approver,
+      CC: HR_mail
     };
     var subject;
     triggerMail("cancel-approval.html", replacements, aResult.join(","), "Your Leave Cancellation has been updated by " + approver.DisplayName);
@@ -944,6 +959,9 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
       subject: subject, // Subject line
       html: htmlToSend
     };
+    if (replacements.CC) {
+      mailOptions.cc = replacements.CC;
+    }
     // console.log(replacements);
 
     if (attachments) {

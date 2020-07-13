@@ -13,6 +13,8 @@ function createSchema(app, mssql, pool2) {
 
     app.get('/api/pending-wfh-approvals', pendingWfhApprovals);
 
+    app.get('/api/pending-wfh-reg-approvals', pendingWfhRegApprovals);
+
     app.post("/api/approve-reject-wfh", approveRejectWfh);
 
     app.post("/api/add-wfh-task", addTasks);
@@ -192,6 +194,57 @@ function createSchema(app, mssql, pool2) {
                         success: true,
                         response: data.recordset
                     });
+                })
+                .catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+        });
+    }
+
+    function pendingWfhRegApprovals(req, res) {
+        pool2.then(pool => {
+            var request = pool.request();
+            console.log(req.query);
+            console.log('sp_GetPendingWfhRegReq');
+            request.input("userId", mssql.Int, req.query.userId);
+            request
+                .execute("sp_GetPendingWfhRegReq")
+                .then(function (data, recordsets, returnValue, affected) {
+                    var resp = data.recordset;
+                    var i = 0;
+                    async.eachSeries(data.recordset, (x, callback) => {
+                        if (x.StatusId == 3) {
+                            // console.log(x);
+                            // console.log('sp_getTaskList')
+                            var request = pool.request();
+                            request.input("UserId", mssql.Int, x.Id);
+                            request.input("Date", mssql.DateTime, x.AttendanceDate);
+                            request
+                                .execute("sp_getTaskList")
+                                .then(function (data, recordsets, returnValue, affected) {
+                                    console.log(data.recordset)
+                                    resp[i].TaskList = data.recordset;
+                                    i++;
+                                    callback();
+                                })
+                                .catch(function (err) {
+                                    console.log(err);
+                                    callback();
+                                });
+                        } else {
+                            resp[i].TaskList = [];
+                            i++;
+                            callback();
+                        }
+                    }, () => {
+                        mssql.close();
+                        res.send({
+                            message: "Data retrieved successfully!",
+                            success: true,
+                            response: resp
+                        });
+                    })
                 })
                 .catch(function (err) {
                     console.log(err);
