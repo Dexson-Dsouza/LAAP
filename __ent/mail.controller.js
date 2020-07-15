@@ -290,7 +290,7 @@ function getLeaveApprovers(callback, userId, diffDays) {
       var emailId = [];
       var pushId = [];
       var names = [];
-      var userid=[];
+      var userid = [];
       if (__o.length) {
         for (var i = 0; i < __o.length; i++) {
           if (parseInt(__o[i].Id) != parseInt(userId)) {
@@ -454,6 +454,38 @@ function getWfhDetails(callback, wfhId) {
   });
 }
 
+
+
+function getWfhRegDetails(callback, wfhId) {
+  pool2.then(pool => {
+    var request = pool.request();
+    console.log(wfhId);
+    request.input("wfhId", mssql.Int, wfhId);
+    request.execute("[sp_GetWfh-RegDetailsByWfhId]").then(function (data) {
+      var request = pool.request();
+      request.input("UserId", mssql.Int, data.recordset[0].UserId);
+      request.input("Date", mssql.DateTime, data.recordset[0].AttendanceDate);
+      request
+        .execute("sp_getTaskList")
+        .then(function (data2, recordsets, returnValue, affected) {
+          mssql.close();
+          data.recordset[0].TaskList = data2.recordset;
+          console.log("============================================================");
+          console.log(data.recordset[0])
+          console.log("============================================================");
+          callback(null, data.recordset[0]);
+        })
+        .catch(function (err) {
+          console.log(err);
+          callback();
+        });
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
 
 function getRegDetails(callback, AttendanceLogId) {
   pool2.then(pool => {
@@ -946,6 +978,78 @@ function sendMailAfterApproveCancellation(userId, leaveId) {
   });
 };
 
+
+function sendMailAfterRegWfhAdded(wfhId, userId) {
+  console.log("==========Send Mail After Wfh Reg Added==========");
+  console.log(wfhId);
+  console.log(userId);
+  async.series([
+    function (callback) {
+      getPostedByUserDetails(callback, userId);
+    },
+    function (callback) {
+      getWfhRegDetails(callback, wfhId);
+    },
+    function (callback) {
+      getWfhApprovers(callback, userId);
+    }
+  ], function (err, results) {
+    var aResult = results[0];// user details
+    var bResult = results[1];// wfh details
+    var cResult = results[2].emailId;
+    var aPushId = results[2].pushId;
+    var names = results[2].names;
+    var line = undefined
+    var oneday = false;
+    if (moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY") == moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').format("MM-DD-YYYY")) {
+      oneday = true;
+    }
+    var Task = [];
+    Task = bResult.TaskList;
+    let s = 1;
+    Task.forEach((x) => {
+      var h = x.Hours / 60 | 0;
+      var m = x.Hours % 60 | 0;
+      x.time = h +" Hours "+m+" Minutes";
+      x.bill = x.Billable == 0 ? 'No' : 'Yes';
+      x.sr = s;
+      s++;
+    })
+    console.log('Tasks');
+    console.log(bResult.TaskList)
+    console.log(Task)
+
+    var replacements = {
+      username: aResult.DisplayName,
+      line: line,
+      startdate: moment(bResult.StartDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      endate: moment(bResult.EndDate, 'YYYY-MM-DD HH:mm:ss').utc().format('Do MMMM YYYY'),
+      oneday: oneday,
+      loginLink: ICS_ADMIN_URL + "/dashboard/wfh-request",
+      WfhDetails: bResult,
+      names: names.join(","),
+      CC: HR_mail,
+      TaskList: Task,
+    };
+
+    triggerMail("wfh-reg-created.html", replacements, cResult.join(","), "Work-from-home Regularization Request");
+    if (aPushId.length) {
+      var message = {
+        registration_ids: aPushId,
+        notification: {
+          title: 'New Work From Home Approval',
+          body: aResult.DisplayName + ' applied for Work From Home. Please review and approve.',
+          click_action: "FCM_PLUGIN_ACTIVITY",
+        },
+        data: {
+          // page: "approve-job",
+        }
+      }
+      triggerPushNotification(message);
+    }
+  });
+};
+
 function triggerMail(tmplName, replacements, to, subject, attachments) {
   readHTMLFile("./__mail_templates/" + tmplName, function (err, html) {
     var template = handlebars.compile(html);
@@ -955,7 +1059,7 @@ function triggerMail(tmplName, replacements, to, subject, attachments) {
     var mailOptions = {
       from: '"Infinite Computing Systems " <no-reply@infinite-usa.com>', // sender address
       to: to, // list of receivers
-      //  to: 'djdsouza@infinite-usa.com',
+      // to: 'djdsouza@infinite-usa.com',
       subject: subject, // Subject line
       html: htmlToSend
     };
@@ -1005,14 +1109,6 @@ exports.sendMailAfterRegReqApprove = sendMailAfterRegReqApprove;
 exports.sendReportToUser = sendReportToUser;
 exports.sendMailAfterCancelReq = sendMailAfterCancelReq;
 exports.sendMailAfterApproveCancellation = sendMailAfterApproveCancellation;
-
-
-
-// exports.sendMailAfterApplicantsApplied = sendMailAfterApplicantsApplied;
-// exports.sendMailToApplicant = sendMailToApplicant;
-// exports.sendMailToIrrelevantApplicant = sendMailToIrrelevantApplicant;
-// exports.sendMailAfterUpdateJob = sendMailAfterUpdateJob;
-// exports.informRecruiterOnApplicantCountOnJob = informRecruiterOnApplicantCountOnJob;
-// exports.sendMailAfterApproveUpdatedJob = sendMailAfterApproveUpdatedJob;
+exports.sendMailAfterRegWfhAdded = sendMailAfterRegWfhAdded;
 
 module.exports.loadSchema = createSchema;

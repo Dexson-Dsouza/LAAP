@@ -150,6 +150,14 @@ function createSchema(app, mssql, pool2) {
             if (decodedToken.email) {
                 pool2.then(pool => {
                     var request = pool.request();
+                    if (req.body.TaskList.length == 0) {
+                        res.send({
+                            message: "Atleast one task is required",
+                            success: false,
+                            // response: data.recordset
+                        });
+                        return;
+                    }
                     console.log(req.body);
                     console.log('sp_EditEmployeeAttendance');
                     request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));
@@ -176,6 +184,7 @@ function createSchema(app, mssql, pool2) {
                                 request
                                     .execute("sp_AddWfh")
                                     .then(function (data, recordsets, returnValue, affected) {
+                                        var wfh=data.recordset[0].Id;
                                         mssql.close();
                                         console.log('sp_addTasks')
                                         var someArray = req.body.TaskList
@@ -198,11 +207,11 @@ function createSchema(app, mssql, pool2) {
                                                     if (member.index == (someArray.length - 1)) {
                                                         console.log("in if");
                                                         res.send({
-                                                            message: "Regularize-Wfh added successfully!",
+                                                            message: "Regularize-WFH added successfully!",
                                                             success: true,
                                                             // response: data.recordset
                                                         });
-                                                        // mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
+                                                        mailer.sendMailAfterRegWfhAdded(wfh, req.body.userId);
                                                         mssql.close();
                                                     } else {
                                                         console.log("in else");

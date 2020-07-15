@@ -44,13 +44,18 @@ function createSchema(app, mssql, pool2, fs) {
                     var request = pool.request();
                     request.input("userId", mssql.Int, data.recordset[0].Id);
                     request.execute("sp_GetEmployeeDetails").then(function (data, recordsets, returnValue, affected) {
-                        mssql.close();
-                        res.send({
-                            message: "User retrieved successfully!",
-                            success: true,
-                            response: data.recordset[0],
-                            token: jwtToken.createJWTToken(data.recordset[0])
-                        });
+                        var request = pool.request();
+                        request.input("userid", mssql.Int, data.recordset[0].Id);
+                        request.execute("sp_GetManagerDetails").then(function (data2, recordsets, returnValue, affected) {
+                            data.recordset[0]['manangerDetails']=data2.recordset;
+                            mssql.close();
+                            res.send({
+                                message: "User retrieved successfully!",
+                                success: true,
+                                response: data.recordset[0],
+                                token: jwtToken.createJWTToken(data.recordset[0])
+                            });
+                        })
                     })
                 }
                 else {
