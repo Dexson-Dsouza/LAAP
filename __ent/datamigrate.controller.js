@@ -509,7 +509,7 @@ function migrateData(arr) {
                 request.input("City", thismssql.VarChar(100), user.City);
                 request.input("State", thismssql.VarChar(100), user.State);
                 request.input("Country", thismssql.VarChar(100), user.Country);
-
+                request.input("JoiningDate", thismssql.VarChar(100), moment(new Date()).format('YYYY-MM-DD'));
                 request.execute("sp_AddUpdateRemoveUser").then(function (data, recordsets, returnValue, affected) {
                     thismssql.close();
                     console.log(user.UserName + " Is updated/added in our database");

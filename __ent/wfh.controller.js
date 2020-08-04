@@ -47,27 +47,47 @@ function createSchema(app, mssql, pool2) {
                         });
                         return;
                     }
-                    request.input("userId", mssql.Int, parseInt(req.body.userId));
-                    request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
-                    request.input("details", mssql.VarChar(4000), req.body.details);
-                    request.input("startDate", mssql.VarChar(100), req.body.startDate);
-                    request.input("endDate", mssql.VarChar(100), req.body.endDate);
-                    request
-                        .execute("sp_AddWfh")
+                    var request3 = pool.request();
+                    request3.input("userId", mssql.Int, parseInt(req.body.userId));
+                    request3.input("fromdate", mssql.VarChar(100), req.body.startDate);
+                    request3.input("todate", mssql.VarChar(100), req.body.endDate);
+                    request3
+                        .execute("sp_CheckIfWfhExists")
                         .then(function (data, recordsets, returnValue, affected) {
-                            mssql.close();
-                            res.send({
-                                message: "Wfh added successfully!",
-                                success: true,
-                                response: data.recordset
-                            });
-                            mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
+                            if (typeof (data.recordset[0]) != "undefined") {
+                                res.send({
+                                    message: "Wfh already exists for the selected date range.",
+                                    success: false,
+                                });
+                                return;
+                            }
+                            request.input("userId", mssql.Int, parseInt(req.body.userId));
+                            request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
+                            request.input("details", mssql.VarChar(4000), req.body.details);
+                            request.input("startDate", mssql.VarChar(100), req.body.startDate);
+                            request.input("endDate", mssql.VarChar(100), req.body.endDate);
+                            request
+                                .execute("sp_AddWfh")
+                                .then(function (data, recordsets, returnValue, affected) {
+                                    mssql.close();
+                                    res.send({
+                                        message: "Wfh added successfully!",
+                                        success: true,
+                                        response: data.recordset
+                                    });
+                                    mailer.sendMailAfterWfhAdded(data.recordset[0].Id, req.body.userId);
+                                })
+                                .catch(function (err) {
+                                    console.log(err);
+                                    res.send(err);
+                                });
                         })
                         .catch(function (err) {
                             console.log(err);
                             res.send(err);
-                        });
-                });
+                        });;
+                })
+
             } else {
                 res.status("401");
                 res.send(invalidRequestError);

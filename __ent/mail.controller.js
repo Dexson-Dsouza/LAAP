@@ -87,7 +87,7 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
       CC: HR_mail
     };
-    triggerMail("leave-created.html", replacements, cResult.join(","), "New Leave Request");
+    triggerMail("leave-created.html", replacements, cResult.join(","), "Leave Request");
     if (aPushId.length) {
       var message = {
         registration_ids: aPushId,
@@ -415,7 +415,7 @@ function sendMailAfterWfhAdded(wfhId, userId) {
       CC: HR_mail
     };
 
-    triggerMail("wfh-created.html", replacements, cResult.join(","), "New Work-from-home Request");
+    triggerMail("wfh-created.html", replacements, cResult.join(","), "New work from home Request");
     if (aPushId.length) {
       var message = {
         registration_ids: aPushId,
@@ -596,13 +596,13 @@ function sendMailAfterApproveWfh(userId, wfhId) {
       approver: approver,
       CC: HR_mail
     };
-    triggerMail("wfh-approval.html", replacements, aResult.join(","), "Your Work-from-home Request has been updated by " + approver.DisplayName);
+    triggerMail("wfh-approval.html", replacements, aResult.join(","), "Your Work from home Request has been updated by " + approver.DisplayName);
     console.log("*******PushId Length****", aPushId.length);
     if (aPushId.length) {
       var message = {
         registration_ids: aPushId,
         notification: {
-          title: 'Work-from-home Detail',
+          title: 'Work from home Detail',
           body: 'Your WFH request is approved.',
           click_action: "FCM_PLUGIN_ACTIVITY",
         },
@@ -1032,7 +1032,7 @@ function sendMailAfterRegWfhAdded(wfhId, userId) {
       TaskList: Task,
     };
 
-    triggerMail("wfh-reg-created.html", replacements, cResult.join(","), "Work-from-home Regularization Request");
+    triggerMail("wfh-reg-created.html", replacements, cResult.join(","), "Work from home Regularization request");
     if (aPushId.length) {
       var message = {
         registration_ids: aPushId,

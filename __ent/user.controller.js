@@ -69,6 +69,8 @@ function createSchema(app, mssql, pool2, fs) {
 
     app.post('/api/senduserreports', senduserreports);
 
+    app.post('/api/adduserinprobation', adduserinprob);
+
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
             console.log("valid token");
@@ -1068,5 +1070,36 @@ function createSchema(app, mssql, pool2, fs) {
         })
     }
 
+    function adduserinprob(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.body);
+                    var request = pool.request();
+                    if (req.body.userId == null || req.body.probationStartDate == null || req.body.probationEndDate == null) {
+                        res.send({
+                            message: "invalid parameters.",
+                            success: false,
+                        });
+                        return;
+                    }
+                    request.input('userId', mssql.Int, req.body.userId);
+                    request.input('probationStartDate', mssql.VarChar(100), req.body.probationStartDate);
+                    request.input('probationEndDate', mssql.VarChar(100), req.body.probationEndDate);
+                    request.execute('sp_AddUserInProbation').then(function (data, recordsets, returnValue, affected) {
+                        mssql.close();
+                        res.send({ message: "User added in probation successfully!", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
 }
 module.exports.loadSchema = createSchema;

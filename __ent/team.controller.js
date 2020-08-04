@@ -252,7 +252,7 @@ function createSchema(app, mssql, pool2) {
                     }
                     request.input('TeamId', mssql.Int, req.body.TeamId);
                     request.input('name', mssql.VarChar(2000), req.body.Name);
-                    request.input('desc', mssql.VarChar(2000), req.body.Desc);
+                    request.input('desc', mssql.VarChar(2000), req.body.Description);
                     request.execute('sp_updateTeam').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         console.log("=============");
