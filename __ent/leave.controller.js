@@ -1,3 +1,5 @@
+const e = require("express");
+
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
 
@@ -77,6 +79,7 @@ function createSchema(app, mssql, pool2) {
                         });
                         return;
                     }
+                    var moment = require('moment');
                     request.input("userId", mssql.Int, parseInt(req.body.userId));
                     request.input("submitDate", mssql.VarChar(100), req.body.submitDate);
                     request.input("details", mssql.VarChar(4000), req.body.details);
@@ -111,68 +114,85 @@ function createSchema(app, mssql, pool2) {
                                 });
                                 return;
                             }
-                            if (parseInt(req.body.leaveCategory) == 5) {
-                                request.input("endDate", mssql.VarChar(100), req.body.startDate);
-                                var request2 = pool.request();
-                                var moment = require('moment');
-                                var date = moment(req.body.startDate).format('YYYY-MM-DD');
-                                var query = 'select * from HolidayList where holidaytype=1';
-                                console.log(date);
-                                request2.query(query).then(function (data, recordsets, returnValue, affected) {
-                                    var floatingList = [];
-                                    floatingList = data.recordset
-                                    var exists = false;
-                                    floatingList.filter((x) => {
-                                        if (moment(x.HolidayDate).format('YYYY-MM-DD') == date) {
-                                            exists = true;
-                                            return;
-                                        }
-                                    })
-                                    if (exists) {
-                                        request
-                                            .execute("sp_AddLeave")
-                                            .then(function (data, recordsets, returnValue, affected) {
-                                                mssql.close();
-                                                res.send({
-                                                    message: "Leave added successfully!",
-                                                    success: true,
-                                                });
-                                                mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
-                                            })
-                                            .catch(function (err) {
-                                                console.log(err);
-                                                res.send(err);
-                                            });
-                                    } else {
-                                        res.send({
-                                            message: "Selected day is not applicable for floating leave.",
-                                            success: false,
-                                        });
+                            var request4 = pool.request();
+                            var prob = false;
+                            request4.input('userId', mssql.Int, parseInt(req.body.userId));
+                            request4.execute('sp_GetEmployeeDetails').then(function (data, recordsets, returnValue, affected) {
+                                if (data.recordset[0] && data.recordset[0].ProbationStartDate && data.recordset[0].ProbationEndDate) {
+                                    if (moment(req.body.submitDate).isSameOrAfter(data.recordset[0].ProbationStartDate)
+                                        && moment(req.body.submitDate).isSameOrBefore(data.recordset[0].ProbationEndDate)) {
+                                        prob = true;
                                     }
-                                }).catch(function (err) {
-                                    console.log(err);
-                                    res.send(err);
-                                });
-                            } else {
-                                request
-                                    .execute("sp_AddLeave")
-                                    .then(function (data, recordsets, returnValue, affected) {
-                                        mssql.close();
-                                        res.send({
-                                            message: "Leave added successfully!",
-                                            success: true,
-                                        });
-                                        if (diffDays >= 2) {
-                                            req.body.leaveId = data.recordset[0].Id;
-                                            addHodApproval(req, res);
+                                }
+                                if (parseInt(req.body.leaveCategory) == 5 && prob == false) {
+                                    request.input("LWP", mssql.Int, 0);
+                                    request.input("endDate", mssql.VarChar(100), req.body.startDate);
+                                    var request2 = pool.request();
+                                    var date = moment(req.body.startDate).format('YYYY-MM-DD');
+                                    var query = 'select * from HolidayList where holidaytype=1';
+                                    console.log(date);
+                                    request2.query(query).then(function (data, recordsets, returnValue, affected) {
+                                        var floatingList = [];
+                                        floatingList = data.recordset
+                                        var exists = false;
+                                        floatingList.find((x) => {
+                                            if (moment(x.HolidayDate).format('YYYY-MM-DD') == date) {
+                                                exists = true;
+                                                return;
+                                            }
+                                        })
+                                        if (exists) {
+                                            request
+                                                .execute("sp_AddLeave")
+                                                .then(function (data, recordsets, returnValue, affected) {
+                                                    mssql.close();
+                                                    res.send({
+                                                        message: "Leave added successfully!",
+                                                        success: true,
+                                                    });
+                                                    mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                                })
+                                                .catch(function (err) {
+                                                    console.log(err);
+                                                    res.send(err);
+                                                });
+                                        } else {
+                                            res.send({
+                                                message: "Selected day is not applicable for floating leave.",
+                                                success: false,
+                                            });
                                         }
-                                        mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
-                                    })
-                                    .catch(function (err) {
+                                    }).catch(function (err) {
                                         console.log(err);
                                         res.send(err);
                                     });
-                            }
+                                } else {
+                                    request.input("LWP", mssql.Int, (prob && prob == true) ? 1 : 0);
+                                    request
+                                        .execute("sp_AddLeave")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            mssql.close();
+                                            res.send({
+                                                message: "Leave added successfully!",
+                                                success: true,
+                                            });
+                                            if (diffDays >= 2) {
+                                                req.body.leaveId = data.recordset[0].Id;
+                                                addHodApproval(req, res);
+                                            }
+                                            mailer.sendMailAfterLeaveAdd(data.recordset[0].Id, req.body.userId, diffDays);
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            res.send(err);
+                                        });
+                                }
+
+                            }).catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+
                         })
                         .catch(function (err) {
                             console.log(err);
@@ -387,14 +407,20 @@ function createSchema(app, mssql, pool2) {
                 .execute("sp_GetPendingLeaveApprovals")
                 .then(function (data, recordsets, returnValue, affected) {
                     mssql.close();
-                    data.recordset.forEach(x => {
-                        x['workingdays'] = workingDaysBetweenDates((x.StartDate), (x.EndDate));
-                    })
-                    res.send({
-                        message: "Data retrieved successfully!",
-                        success: true,
-                        response: data.recordset
-                    });
+                    async.eachSeries(data.recordset, function (x, callback) {
+                        workingDaysBetweenDates((x.StartDate), (x.EndDate), x.Userid).then(count => {
+                            x['workingdays'] = count;
+                            callback();
+                        })
+                    },
+                        () => {
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+
                 })
                 .catch(function (err) {
                     console.log(err);
@@ -473,13 +499,12 @@ function createSchema(app, mssql, pool2) {
             console.log(req.body);
             if (records.length == 1) {
                 query = "update EmployeeLeave set status = 1 where status=3 and Id = " + req.body.leaveId;
-                //console.log('single accepted')
+                console.log('single accepted')
                 request
                     .query(query)
                     .then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         deductLeaveBalance(req.body.leaveId, req.body.userId);
-                        console.log(data);
                         res.send({
                             message: "Leave Status Updated successfully!",
                             success: true,
@@ -499,13 +524,12 @@ function createSchema(app, mssql, pool2) {
                     }
                 });
                 if (__t) {
-                    //  console.log('group accept')
+                    console.log('group accept')
                     query = "update EmployeeLeave set status = 1 where status=3 and Id = " + req.body.leaveId;
                     request
                         .query(query)
                         .then(function (data, recordsets, returnValue, affected) {
                             mssql.close();
-                            console.log(data);
                             deductLeaveBalance(req.body.leaveId, req.body.userId);
                             res.send({
                                 message: "Leave Status Updated successfully!",
@@ -534,23 +558,92 @@ function createSchema(app, mssql, pool2) {
             request1.input("leaveId", mssql.Int, leaveId);
             request1.execute("sp_GetLeaveDetailsByLeaveId").then(function (data) {
                 mssql.close();
+                console.log('=========')
+                console.log(data.recordset[0]);
                 var start = new Date(data.recordset[0].StartDate);
                 var end = new Date(data.recordset[0].EndDate);
-                var w = workingDaysBetweenDates(start, end);
-                console.log('working days ' + w);
-                var request = pool.request();
-                request.input("leaveId", mssql.Int, leaveId);
-                request.input("userId", mssql.Int, data.recordset[0].Userid);
-                request.input("numberofdays", mssql.Int, w);
-                request
-                    .execute("sp_deductLeaveBalance")
-                    .then(function (data, recordsets, returnValue, affected) {
-                        mssql.close();
+                if (data.recordset[0].LWP == 0) {
+                    workingDaysBetweenDates(start, end, data.recordset[0].Userid).then(count => {
+                        var w = count; // days in leave
+                        console.log('working days ' + w);
+                        var request = pool.request();
+                        request.input('userId', mssql.Int, data.recordset[0].Userid);
+                        request.execute('sp_GetEmployeeDetails').then(function (data2, recordsets, returnValue, affected) {
+                            var fc = data2.recordset[0].FloatingCount; // floating count of user
+                            console.log('floating left ' + fc);
+                            if (fc > 0 && data.recordset[0].HalfDay == 0) {
+                                var floatingLeaves = 0; // floating leave days between leave range
+                                var request2 = pool.request();
+                                var query = 'select * from HolidayList where holidaytype=1';
+                                request2.query(query).then(function (data3, recordsets, returnValue, affected) {
+                                    var floatingList = [];
+                                    floatingList = data3.recordset
+                                    for (var x of floatingList) {
+                                        if (
+                                            (moment(x.HolidayDate).isBetween(start, end, undefined, []))
+                                        ) {
+                                            floatingLeaves++;
+                                            if (fc == floatingLeaves) {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    console.log('floating leaves ' + floatingLeaves);
+                                    if (floatingLeaves > 0) {
+                                        var request = pool.request();
+                                        request.input("leaveId", mssql.Int, leaveId);
+                                        request.input("userId", mssql.Int, data.recordset[0].Userid);
+                                        request.input("numberofdays", mssql.Int, floatingLeaves);
+                                        request
+                                            .execute("sp_deductFloatingBalance")
+                                            .then(function (data, recordsets, returnValue, affected) {
+                                                mssql.close();
+                                            })
+                                            .catch(function (err) {
+                                                console.log(err);
+                                                res.send(err);
+                                            });
+                                    }
+                                    if (w > 0) {
+                                        var request = pool.request();
+                                        request.input("leaveId", mssql.Int, leaveId);
+                                        request.input("userId", mssql.Int, data.recordset[0].Userid);
+                                        request.input("numberofdays", mssql.Int, (w - floatingLeaves));
+                                        request
+                                            .execute("sp_deductLeaveBalance")
+                                            .then(function (data, recordsets, returnValue, affected) {
+                                                mssql.close();
+                                            })
+                                            .catch(function (err) {
+                                                console.log(err);
+                                                res.send(err);
+                                            });
+                                    }
+                                }).catch(function (err) {
+                                    console.log(err);
+                                    res.send(err);
+                                });
+                            } else {
+                                var request = pool.request();
+                                request.input("leaveId", mssql.Int, leaveId);
+                                request.input("userId", mssql.Int, data.recordset[0].Userid);
+                                request.input("numberofdays", mssql.Int, w);
+                                request
+                                    .execute("sp_deductLeaveBalance")
+                                    .then(function (data, recordsets, returnValue, affected) {
+                                        mssql.close();
+                                    })
+                                    .catch(function (err) {
+                                        console.log(err);
+                                        res.send(err);
+                                    });
+                            }
+                        }).catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
                     })
-                    .catch(function (err) {
-                        console.log(err);
-                        res.send(err);
-                    });
+                }
             })
         })
             .catch(function (err) {
@@ -656,28 +749,82 @@ function createSchema(app, mssql, pool2) {
             request1.input("leaveId", mssql.Int, leaveId);
             request1.execute("sp_GetLeaveDetailsByLeaveId").then(function (data) {
                 mssql.close();
+                console.log('=========')
+                console.log(data.recordset[0]);
                 var start = new Date(data.recordset[0].StartDate);
                 var end = new Date(data.recordset[0].EndDate);
-                var w = workingDaysBetweenDates(start, end);
-                console.log('working days ' + w);
-                var request = pool.request();
-                console.log("sp_restoreLeaveBalance");
-                console.log(leaveId, userId)
-                var request = pool.request();
-                request.input("leaveId", mssql.Int, leaveId);
-                request.input("userId", mssql.Int, userId);
-                request.input("numberofdays", mssql.Int, w);
-                request
-                    .execute("sp_restoreLeaveBalance")
-                    .then(function (data, recordsets, returnValue, affected) {
-                        mssql.close();
-                        console.log('done');
+                if (data.recordset[0].LWP == 0) {
+                    workingDaysBetweenDates(start, end, data.recordset[0].Userid).then(count => {
+                        var w = count; // days in leave
+                        console.log('working days ' + w);
+                        if (data.recordset[0].HalfDay == 0) {
+                            var floatingLeaves = 0; // floating leave days between leave range
+                            var request2 = pool.request();
+                            var query = 'select * from HolidayList where holidaytype=1';
+                            request2.query(query).then(function (data3, recordsets, returnValue, affected) {
+                                var floatingList = [];
+                                floatingList = data3.recordset
+                                for (var x of floatingList) {
+                                    if (
+                                        (moment(x.HolidayDate).isBetween(start, end, undefined, []))
+                                    ) {
+                                        floatingLeaves++;
+                                    }
+                                }
+                                console.log('floating leaves ' + floatingLeaves);
+                                if (floatingLeaves > 0) {
+                                    var request = pool.request();
+                                    request.input("leaveId", mssql.Int, leaveId);
+                                    request.input("userId", mssql.Int, data.recordset[0].Userid);
+                                    request.input("numberofdays", mssql.Int, floatingLeaves);
+                                    request
+                                        .execute("sp_restoreFloatingBalance")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            mssql.close();
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            res.send(err);
+                                        });
+                                }
+                                if (w > 0) {
+                                    var request = pool.request();
+                                    request.input("leaveId", mssql.Int, leaveId);
+                                    request.input("userId", mssql.Int, data.recordset[0].Userid);
+                                    request.input("numberofdays", mssql.Int, (w - floatingLeaves));
+                                    request
+                                        .execute("sp_restoreLeaveBalance")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            mssql.close();
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            res.send(err);
+                                        });
+                                }
+                            }).catch(function (err) {
+                                console.log(err);
+                                res.send(err);
+                            });
+                        } else {
+                            var request = pool.request();
+                            request.input("leaveId", mssql.Int, leaveId);
+                            request.input("userId", mssql.Int, data.recordset[0].Userid);
+                            request.input("numberofdays", mssql.Int, w);
+                            request
+                                .execute("sp_restoreLeaveBalance")
+                                .then(function (data, recordsets, returnValue, affected) {
+                                    mssql.close();
+                                })
+                                .catch(function (err) {
+                                    console.log(err);
+                                    res.send(err);
+                                });
+                        }
                     })
-                    .catch(function (err) {
-                        console.log(err);
-                        res.send(err);
-                    });
+                }
             })
+
         })
             .catch(function (err) {
                 console.log(err);
@@ -700,8 +847,8 @@ function createSchema(app, mssql, pool2) {
                         console.log('regularize');
                         request.input("AttendanceDate", mssql.DateTime, leave.StartDate)
                         request.input("UserId", mssql.Int, parseInt(leave.Userid));
-                        request.input("Status", mssql.VarChar(4000), " On Leave(PL)")
-                        request.input("StatusCode", mssql.VarChar(4000), "PL")
+                        request.input("Status", mssql.VarChar(4000), (leave.LWP && leave.LWP == 0) ? " On Leave(PL)" : "Leave Without Pay")
+                        request.input("StatusCode", mssql.VarChar(4000), (leave.LWP && leave.LWP == 0) ? "PL" : "LWP")
                         request
                             .execute("sp_updateAttendanceStatus")
                             .then(function (data, recordsets, returnValue, affected) {
@@ -940,41 +1087,76 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function workingDaysBetweenDates(s, e) {
+    function workingDaysBetweenDates(s, e, userId) {
         // Validate input
-        var startDate = new Date(moment(s, 'YYYY-MM-DD HH:mm:ss').utc().format("MM-DD-YYYY"));
-        var endDate = new Date(moment(e, 'YYYY-MM-DD HH:mm:ss').utc().format("MM-DD-YYYY"));
-        if (endDate < startDate)
-            return 0;
+        return new Promise((ress, rej) => {
+            let startDate = new Date(moment(s, 'YYYY-MM-DD HH:mm:ss').utc().format("MM-DD-YYYY"));
+            let endDate = new Date(moment(e, 'YYYY-MM-DD HH:mm:ss').utc().format("MM-DD-YYYY"));
+            if (endDate < startDate)
+                ress(0);
+            // Calculate days between dates
+            var millisecondsPerDay = 86400 * 1000; // Day in milliseconds
+            // startDate.setHours(0, 0, 0, 1);  // Start just after midnight
+            // endDate.setHours(23, 59, 59, 999);  // End just before midnight
+            let diff = endDate - startDate;  // Milliseconds between datetime objects    
+            let days = Math.ceil(diff / millisecondsPerDay)+1;
+            var holiday = 0;
+            pool2.then(pool => {
+                var request1 = pool.request();
+                var query = 'select * from HolidayList';
+                request1.query(query).then(function (data, recordsets, returnValue, affected) {
+                    var H_list = data.recordset;
+                    H_list.forEach((x) => {
+                        if (x.HolidayType == 0 && (moment(x.HolidayDate).isBetween(startDate, endDate, undefined, []))) {
+                            holiday++;
+                        }
+                    })
+                    console.log('holidays ', holiday, days, startDate, endDate);
+                    var request = pool.request();
+                    request.input('userId', mssql.Int, userId);
+                    request
+                        .execute("sp_GetEmployeeDetails")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            if (data.recordset[0] && data.recordset[0].ProbationStartDate && data.recordset[0].ProbationEndDate) {
+                                if (moment(new Date()).isSameOrAfter(data.recordset[0].ProbationStartDate)
+                                    && moment(new Date()).isSameOrBefore(data.recordset[0].ProbationEndDate)) {
+                                    ress(days - holiday);
+                                }
+                            }
+                            else {
+                                // Subtract two weekend days for every week in between
+                                var weeks = Math.floor(days / 7);
+                                days = days - (weeks * 2);
 
-        // Calculate days between dates
-        var millisecondsPerDay = 86400 * 1000; // Day in milliseconds
-        startDate.setHours(0, 0, 0, 1);  // Start just after midnight
-        endDate.setHours(23, 59, 59, 999);  // End just before midnight
-        var diff = endDate - startDate;  // Milliseconds between datetime objects    
-        var days = Math.ceil(diff / millisecondsPerDay);
+                                // Handle special cases
+                                var startDay = startDate.getDay();
+                                var endDay = endDate.getDay();
 
-        // Subtract two weekend days for every week in between
-        var weeks = Math.floor(days / 7);
-        days = days - (weeks * 2);
+                                // Remove weekend not previously removed.   
+                                if (startDay - endDay > 1)
+                                    days = days - 2;
 
-        // Handle special cases
-        var startDay = startDate.getDay();
-        var endDay = endDate.getDay();
+                                // Remove start day if span starts on Sunday but ends before Saturday
+                                if (startDay == 0 && endDay != 6)
+                                    days = days - 1
 
-        // Remove weekend not previously removed.   
-        if (startDay - endDay > 1)
-            days = days - 2;
+                                // Remove end day if span ends on Saturday but starts after Sunday
+                                if (endDay == 6 && startDay != 0)
+                                    days = days - 1
 
-        // Remove start day if span starts on Sunday but ends before Saturday
-        if (startDay == 0 && endDay != 6)
-            days = days - 1
-
-        // Remove end day if span ends on Saturday but starts after Sunday
-        if (endDay == 6 && startDay != 0)
-            days = days - 1
-
-        return days;
+                                ress(days - holiday);
+                            }
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                        });
+                }).catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+            });
+        })
     }
 
 }

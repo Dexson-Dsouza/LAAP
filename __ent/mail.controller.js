@@ -85,7 +85,8 @@ function sendMailAfterLeaveAdd(leaveId, userId, diffDays) {
       names: names.join(","),
       // innertext: innertext,
       loginLink: ICS_ADMIN_URL + "/dashboard/leave-requests",
-      CC: HR_mail
+      CC: HR_mail,
+      LWP: bResult.LWP == 1 ? true : false,
     };
     triggerMail("leave-created.html", replacements, cResult.join(","), "Leave Request");
     if (aPushId.length) {
@@ -160,7 +161,8 @@ function sendMailAfterApproveLeave(userId, leaveId) {
       approved: approver.Status == 1 ? true : false,
       pendingApprover: pendingApprover.join(','),
       approver: approver,
-      CC: HR_mail
+      CC: HR_mail,
+      LWP: result1.LWP == 1 ? true : false,
     };
     var subject;
     triggerMail("leave-approval.html", replacements, aResult.join(","), "Your Leave Request has been updated by " + approver.DisplayName);
@@ -1010,7 +1012,7 @@ function sendMailAfterRegWfhAdded(wfhId, userId) {
     Task.forEach((x) => {
       var h = x.Hours / 60 | 0;
       var m = x.Hours % 60 | 0;
-      x.time = h +" Hours "+m+" Minutes";
+      x.time = h + " Hours " + m + " Minutes";
       x.bill = x.Billable == 0 ? 'No' : 'Yes';
       x.sr = s;
       s++;

@@ -188,7 +188,7 @@ function GenerateReport() {
             var now = moment();
             var query = 'select Id,EmployeeCode from Users where employeecode is not null';
             let year = now.year();
-            let month = 2
+            let month = now.month()+1;
             request.query(query).then(function (data, recordsets, returnValue, affected) {
                 console.log('data len ' + data.recordset.length);
                 async.eachSeries(data.recordset , (__d ,callback )=>{
@@ -214,6 +214,7 @@ function GenerateReport() {
                                     var sum = 0;
                                     var days = 0;
                                     var leaves = 0;
+                                    var LWP=0;
                                     for (var _t of data.recordset) {
                                         if (_t.StatusCode == 'P' || _t.StatusCode == '½P' || _t.StatusCode == 'WFH') {
                                             days++;
@@ -222,6 +223,8 @@ function GenerateReport() {
                                         }else if(_t.StatusCode == 'A'){
                                             days++; 
                                             leaves++;
+                                        }else if(_t.StatusCode == 'LWP'){
+                                            LWP++;
                                         }
                                     // console.log(540-moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
                                         sum = sum + (moment.duration(moment(_t.OutTime).diff(moment(_t.InTime))).asMinutes());
@@ -243,13 +246,12 @@ function GenerateReport() {
                                         sf=0;
                                     }
                                     var total=leaves+x;
-                                    var closeLB=0,LWP=0;             
+                                    var closeLB=0;             
                                     if(total>=openLB){
                                         closeLB=0;
-                                        LWP=total-openLB;
+                                        LWP=LWP+total-openLB;
                                     }else{
                                         closeLB=openLB-total;
-                                        LWP=0;
                                     }
                                     let obj={
                                         'month':month,

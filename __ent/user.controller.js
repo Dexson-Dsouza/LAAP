@@ -1,3 +1,5 @@
+const moment = require("moment");
+
 function createSchema(app, mssql, pool2, fs) {
 
     var jwtToken = require("./jwt.controller");
@@ -70,6 +72,8 @@ function createSchema(app, mssql, pool2, fs) {
     app.post('/api/senduserreports', senduserreports);
 
     app.post('/api/adduserinprobation', adduserinprob);
+
+    app.get('/api/getuserinprobation', getuserinprobation);
 
     function getUserPermissions(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -1090,6 +1094,38 @@ function createSchema(app, mssql, pool2, fs) {
                     request.execute('sp_AddUserInProbation').then(function (data, recordsets, returnValue, affected) {
                         mssql.close();
                         res.send({ message: "User added in probation successfully!", success: true });
+                    }).catch(function (err) {
+                        console.log(err);
+                        res.send(err);
+                    });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getuserinprobation(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log("valid token");
+            if (decodedToken.email) {
+                pool2.then((pool) => {
+                    console.log(req.query);
+                    console.log('sp_GetUsersInProb');
+                    var request = pool.request();
+                    request.execute('sp_GetUsersInProb').then(function (data, recordsets, returnValue, affected) {
+                        var __t = data.recordset;
+                        console.log(data.recordset);
+                        var resp = [];
+                        __t.forEach(x => {
+                            if (moment(req.query.date).isSameOrAfter(x.ProbationStartDate)
+                                && moment(req.query.date).isSameOrBefore(x.ProbationEndDate)) {
+                                resp.push(x);
+                            }
+                        })
+                        mssql.close();
+                        res.send({ message: "User in probation retrieved successfully!", success: true, response: resp });
                     }).catch(function (err) {
                         console.log(err);
                         res.send(err);
