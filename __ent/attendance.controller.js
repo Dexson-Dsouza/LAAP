@@ -13,13 +13,14 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/regularize-attendance", regularize);
 
-    app.post("/api/regularize-wfh", regularizewfh);
 
     app.get('/api/get-regularize-requests', getRegularizeReq);
 
     app.post("/api/approve-reject-regularize-requests", approveRejectRegularizeReq);
 
     app.get("/api/checkif-regularize-exists", regularizeExists);
+
+
 
     function getAttendanceById(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -144,104 +145,6 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
-    function regularizewfh(req, res) {
-        jwtToken.verifyRequest(req, res, decodedToken => {
-            console.log(decodedToken.email);
-            if (decodedToken.email) {
-                pool2.then(pool => {
-                    var request = pool.request();
-                    if (req.body.TaskList.length == 0) {
-                        res.send({
-                            message: "Atleast one task is required",
-                            success: false,
-                            // response: data.recordset
-                        });
-                        return;
-                    }
-                    console.log(req.body);
-                    console.log('sp_EditEmployeeAttendance');
-                    request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));
-                    request.input("AttendanceDate", mssql.VarChar(100), req.body.AttendanceDate);
-                    request.input("InTime", mssql.VarChar(100), req.body.InTime);
-                    request.input("OutTime", mssql.VarChar(100), req.body.OutTime);
-                    request.input("EmployeeCode", mssql.VarChar(100), req.body.EmployeeCode);
-                    request.input("details", mssql.VarChar(100), req.body.details);
-                    request.input("Status", mssql.Int, parseInt(req.body.status));
-                    request.input("createdDate", mssql.VarChar(100), req.body.CreatedDate);
-                    request
-                        .execute("sp_EditEmployeeAttendance")
-                        .then(function (data, recordsets, returnValue, affected) {
-                            pool2.then(pool => {
-                                var request = pool.request();
-                                // console.log(req.body);
-                                console.log('sp_AddWfh');
-                                request.input("userId", mssql.Int, parseInt(req.body.userId));
-                                request.input("submitDate", mssql.VarChar(100), req.body.CreatedDate);
-                                request.input("details", mssql.VarChar(4000), req.body.details);
-                                request.input("startDate", mssql.VarChar(100), req.body.AttendanceDate);
-                                request.input("endDate", mssql.VarChar(100), req.body.AttendanceDate);
-                                request.input("trackId", mssql.Int, data.recordset[0].trackId);
-                                request
-                                    .execute("sp_AddWfh")
-                                    .then(function (data, recordsets, returnValue, affected) {
-                                        var wfh=data.recordset[0].Id;
-                                        mssql.close();
-                                        console.log('sp_addTasks')
-                                        var someArray = req.body.TaskList
-                                        var arrayWithIndx = someArray.map(function (e, i) { return { obj: e, index: i } });
-                                        console.log(arrayWithIndx);
-                                        async.eachSeries(arrayWithIndx, function (member, callback) {
-                                            pool2.then((pool) => {
-                                                var request = pool.request();
-                                                console.log(member);
-                                                request.input('projectId', mssql.Int, member.obj.ProjectId);
-                                                request.input('userId', mssql.Int, member.obj.UserId);
-                                                request.input("description", mssql.VarChar(4000), member.obj.Description);
-                                                request.input("startTime", mssql.VarChar(100), member.obj.StartTime);
-                                                request.input("endTime", mssql.VarChar(100), member.obj.EndTime);
-                                                request.input('billable', mssql.Int, member.obj.Billable);
-                                                request.input('hours', mssql.Int, member.obj.Hours);
-                                                request.execute('sp_addTask').then(function (data, recordsets, returnValue, affected) {
-                                                    mssql.close();
-                                                    console.log("Index ==>", member.index);
-                                                    if (member.index == (someArray.length - 1)) {
-                                                        console.log("in if");
-                                                        res.send({
-                                                            message: "Regularize-WFH added successfully!",
-                                                            success: true,
-                                                            // response: data.recordset
-                                                        });
-                                                        mailer.sendMailAfterRegWfhAdded(wfh, req.body.userId);
-                                                        mssql.close();
-                                                    } else {
-                                                        console.log("in else");
-                                                        callback();
-                                                    }
-                                                }).catch(function (err) {
-                                                    console.log(err);
-                                                    res.send(err);
-                                                    callback();
-                                                });
-                                            });
-                                        });
-                                    })
-                                    .catch(function (err) {
-                                        console.log(err);
-                                        res.send(err);
-                                    });
-                            });
-                        })
-                        .catch(function (err) {
-                            console.log(err);
-                            res.send(err);
-                        });
-                });
-            } else {
-                res.status("401");
-                res.send(invalidRequestError);
-            }
-        });
-    }
 
     function getRegularizeReq(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -430,5 +333,6 @@ function createSchema(app, mssql, pool2) {
                 });
         });
     }
+
 }
 module.exports.loadSchema = createSchema;

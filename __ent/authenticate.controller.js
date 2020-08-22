@@ -2,7 +2,7 @@ function createSchema(app, mssql, pool2, fs) {
     var jwtToken = require("./jwt.controller");
     var ActiveDirectory = require('activedirectory');
     var adConfig = {
-        url: 'ldap://ics.global',
+        url: 'ldap://192.168.1.238:389',
         baseDN: 'dc=ics,dc=global'
     }
 

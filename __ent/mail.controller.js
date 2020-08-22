@@ -489,6 +489,37 @@ function getWfhRegDetails(callback, wfhId) {
   });
 }
 
+function getWfhDetailswithTask(callback, wfhId) {
+  pool2.then(pool => {
+    var request = pool.request();
+    console.log(wfhId);
+    request.input("wfhId", mssql.Int, wfhId);
+    request.execute("[sp_GetWfhDetailsByWfhId]").then(function (data) {
+      var request = pool.request();
+      request.input("UserId", mssql.Int, data.recordset[0].UserId);
+      request.input("Date", mssql.DateTime, data.recordset[0].StartDate);
+      request
+        .execute("sp_getTaskList")
+        .then(function (data2, recordsets, returnValue, affected) {
+          mssql.close();
+          data.recordset[0].TaskList = data2.recordset;
+          console.log("============================================================");
+          console.log(data.recordset[0])
+          console.log("============================================================");
+          callback(null, data.recordset[0]);
+        })
+        .catch(function (err) {
+          console.log(err);
+          callback();
+        });
+    })
+      .catch(function (err) {
+        console.log(err);
+        res.send(err);
+      });
+  });
+}
+
 function getRegDetails(callback, AttendanceLogId) {
   pool2.then(pool => {
     var request = pool.request();
@@ -598,7 +629,7 @@ function sendMailAfterApproveWfh(userId, wfhId) {
       approver: approver,
       CC: HR_mail
     };
-    triggerMail("wfh-approval.html", replacements, aResult.join(","), "Your Work from home Request has been updated by " + approver.DisplayName);
+    triggerMail("wfh-approval.html", replacements, aResult.join(","),approver.DisplayName+ " has updated your Worklog" );
     console.log("*******PushId Length****", aPushId.length);
     if (aPushId.length) {
       var message = {
@@ -990,7 +1021,7 @@ function sendMailAfterRegWfhAdded(wfhId, userId) {
       getPostedByUserDetails(callback, userId);
     },
     function (callback) {
-      getWfhRegDetails(callback, wfhId);
+      getWfhDetailswithTask(callback, wfhId);
     },
     function (callback) {
       getWfhApprovers(callback, userId);
@@ -1034,7 +1065,7 @@ function sendMailAfterRegWfhAdded(wfhId, userId) {
       TaskList: Task,
     };
 
-    triggerMail("wfh-reg-created.html", replacements, cResult.join(","), "Work from home Regularization request");
+    triggerMail("wfh-reg-created.html", replacements, cResult.join(","), "New Worklog Submission");
     if (aPushId.length) {
       var message = {
         registration_ids: aPushId,

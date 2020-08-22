@@ -229,7 +229,7 @@
                 <td bgcolor="#ffffff"
                     style="padding: 0 40px 0px; font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
                     <p style="font-size:16px;line-height:24px;color:#4c4c4c">
-                        {{ username}} has requested for regularization of attendance.
+                        {{ username}} has submitted worklogs.
                         <!-- {{#if oneday}}
                         on <strong>{{startdate}}
                         </strong>
@@ -246,24 +246,24 @@
                 <td bgcolor="#ffffff"
                     style="padding: 0 40px 20px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
 
-                    <p>Following are the details</p>
+                    <!-- <p>Following tasks were performed: </p> -->
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="520"
                         style="margin: auto; " class="email-container">
 
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                Work from home Date</td>
+                                Date</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{startdate}}</td>
                         </tr>
 
-                        <tr>
+                        <!-- <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
                                 Reason for Work from home</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{WfhDetails.Reason}}
                             </td>
-                        </tr>
+                        </tr> -->
                     </table>
                 </td>
             </tr>
@@ -288,7 +288,7 @@
                                 Billable</td>
                         </tr>
                         {{#each TaskList}}
-                        <tr>
+                        <tr style="height:100px">
                             <td style="border: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{this.sr}}
                             </td>
                             <td style="border: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{this.Description}}
@@ -309,7 +309,7 @@
                     <a href={{loginLink}} style=" color: #2686f1;">
                         <p style="margin: 0;font-size: 20px;"><span
                                 style="color:#0078ff;display: inline-block;padding: 10px 15px 10px 15px;text-decoration: none;border: 2px solid #0078ff;">
-                                Click here to approve</span></p>
+                                Click here to take action</span></p>
                     </a>
                 </td>
             </tr>

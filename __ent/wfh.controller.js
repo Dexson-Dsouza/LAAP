@@ -1,9 +1,13 @@
+const moment = require("moment-business-days");
+
 function createSchema(app, mssql, pool2) {
     var jwtToken = require("./jwt.controller");
 
     var mailer = require("./mail.controller.js");
 
     var async = require("async");
+
+    app.get("/api/getwfhstatus", getWfhStatus);
 
     app.post("/api/add-wfh", addWfh);
 
@@ -29,6 +33,48 @@ function createSchema(app, mssql, pool2) {
 
     app.post("/api/approve-reject-wfh-cancellation", approveRejectWfhCancellation);
 
+    app.post("/api/save-and-submit-tasklist", saveAndSubmitTasklist);
+
+    app.get("/api/employee-wfh-with-tasklist", getEmployeeWfhWithTaksList);
+
+    app.post("/api/regularize-wfh", regularizewfh);
+
+    app.post("/api/edit-wfh-request", editWfhReq);
+
+    app.get('/api/pending-wfh-tasklist-approvals', pendingWfhTasksForApproval);
+
+    app.get('/api/get-wfh-details-and-tasks', getWfhDetailswithTask);
+
+    app.get("/api/getUserTaskDetails", getUserTaskDetails);
+
+    function getWfhStatus(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    console.log('getWfhStatus');
+                    var request = pool.request();
+                    request
+                        .query("SELECT * FROM WfhStatus")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: data.recordset
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
 
     function addWfh(req, res) {
         jwtToken.verifyRequest(req, res, decodedToken => {
@@ -745,5 +791,455 @@ function createSchema(app, mssql, pool2) {
         });
     }
 
+    function saveAndSubmitTasklist(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.body);
+                    console.log('saveAndSubmitTasklist');
+                    request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
+                    request.input("userId", mssql.Int, parseInt(req.body.userId));
+                    request
+                        .execute('sp_saveAndSubmitTasklist')
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mailer.sendMailAfterRegWfhAdded(req.body.wfhId, req.body.userId);
+                            res.send({
+                                message: "Task-List submitted successfully!",
+                                success: true,
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+
+    }
+
+    function getEmployeeWfhWithTaksList(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    console.log('sp_GetWfh');
+                    request.input("userId", mssql.Int, req.query.userId);
+                    request.input("year", mssql.Int, req.query.year);
+                    request.input("fromdate", mssql.VarChar(100), req.query.fromdate);
+                    request.input("todate", mssql.VarChar(100), req.query.todate);
+                    request.input("limit", mssql.Int, req.query.limit);
+                    request.input("page", mssql.Int, req.query.page);
+                    request.input("status", mssql.Int, req.query.status);
+                    request
+                        .execute("sp_GetWfh")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            var resp = data.recordset
+                            var i = 0;
+                            async.eachSeries(data.recordset, (x, callback) => {
+                                if (x.StartDate) {
+                                    // console.log(x);
+                                    // console.log('sp_getTaskList')
+                                    var request = pool.request();
+                                    request.input("UserId", mssql.Int, x.Userid);
+                                    request.input("Date", mssql.DateTime, x.StartDate);
+                                    request
+                                        .execute("sp_getTaskList")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            console.log(data.recordset)
+                                            resp[i].TaskList = data.recordset;
+                                            i++;
+                                            callback();
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            callback();
+                                        });
+                                } else {
+                                    resp[i].TaskList = [];
+                                    i++;
+                                    callback();
+                                }
+                            }, () => {
+                                mssql.close();
+                                res.send({
+                                    message: "Data retrieved successfully!",
+                                    success: true,
+                                    response: resp
+                                });
+                            })
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+
+    function regularizewfh(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    if (req.body.TaskList.length == 0) {
+                        res.send({
+                            message: "Atleast one task is required",
+                            success: false,
+                            // response: data.recordset
+                        });
+                        return;
+                    }
+                    console.log(req.body);
+                    console.log('sp_EditEmployeeAttendance');
+                    request.input("AttendanceLogId", mssql.Int, parseInt(req.body.AttendanceLogId));
+                    request.input("AttendanceDate", mssql.VarChar(100), req.body.AttendanceDate);
+                    request.input("InTime", mssql.VarChar(100), req.body.InTime);
+                    request.input("OutTime", mssql.VarChar(100), req.body.OutTime);
+                    request.input("EmployeeCode", mssql.VarChar(100), req.body.EmployeeCode);
+                    request.input("details", mssql.VarChar(100), req.body.details);
+                    request.input("Status", mssql.Int, parseInt(req.body.status));
+                    request.input("createdDate", mssql.VarChar(100), req.body.CreatedDate);
+                    request
+                        .execute("sp_EditEmployeeAttendance")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            pool2.then(pool => {
+                                var request = pool.request();
+                                // console.log(req.body);
+                                console.log('sp_AddWfh');
+                                request.input("userId", mssql.Int, parseInt(req.body.userId));
+                                request.input("submitDate", mssql.VarChar(100), req.body.CreatedDate);
+                                request.input("details", mssql.VarChar(4000), req.body.details);
+                                request.input("startDate", mssql.VarChar(100), req.body.AttendanceDate);
+                                request.input("endDate", mssql.VarChar(100), req.body.AttendanceDate);
+                                request.input("trackId", mssql.Int, data.recordset[0].trackId);
+                                request.input("InTime", mssql.VarChar(100), req.body.InTime);
+                                request.input("OutTime", mssql.VarChar(100), req.body.OutTime);
+                                request
+                                    .execute("sp_AddWfh")
+                                    .then(function (data, recordsets, returnValue, affected) {
+                                        var wfh = data.recordset[0].Id;
+                                        mssql.close();
+                                        console.log('sp_addTasks')
+                                        var someArray = req.body.TaskList
+                                        var arrayWithIndx = someArray.map(function (e, i) { return { obj: e, index: i } });
+                                        console.log(arrayWithIndx);
+                                        async.eachSeries(arrayWithIndx, function (member, callback) {
+                                            pool2.then((pool) => {
+                                                var request = pool.request();
+                                                console.log(member);
+                                                request.input('projectId', mssql.Int, member.obj.ProjectId);
+                                                request.input('userId', mssql.Int, member.obj.UserId);
+                                                request.input("description", mssql.VarChar(4000), member.obj.Description);
+                                                request.input("startTime", mssql.VarChar(100), member.obj.StartTime);
+                                                request.input("endTime", mssql.VarChar(100), member.obj.EndTime);
+                                                request.input('billable', mssql.Int, member.obj.Billable);
+                                                request.input('hours', mssql.Int, member.obj.Hours);
+                                                request.execute('sp_addTask').then(function (data, recordsets, returnValue, affected) {
+                                                    mssql.close();
+                                                    console.log("Index ==>", member.index);
+                                                    if (member.index == (someArray.length - 1)) {
+                                                        console.log("in if");
+                                                        res.send({
+                                                            message: "Task-List saved successfully!",
+                                                            success: true,
+                                                            // response: data.recordset
+                                                        });
+                                                        if (req.body.confirmed == 1) {
+                                                            var request = pool.request();
+                                                            request.input("wfhId", mssql.Int, wfh);
+                                                            request.input("userId", mssql.Int, parseInt(req.body.userId));
+                                                            request
+                                                                .execute('sp_saveAndSubmitTasklist')
+                                                                .then(function (data, recordsets, returnValue, affected) {
+                                                                    mailer.sendMailAfterRegWfhAdded(wfh, req.body.userId);
+                                                                })
+                                                                .catch(function (err) {
+                                                                    console.log(err);
+                                                                    res.send(err);
+                                                                });
+                                                        }
+                                                        // mailer.sendMailAfterRegWfhAdded(wfh, req.body.userId);
+                                                        mssql.close();
+                                                    } else {
+                                                        console.log("in else");
+                                                        callback();
+                                                    }
+                                                }).catch(function (err) {
+                                                    console.log(err);
+                                                    res.send(err);
+                                                    callback();
+                                                });
+                                            });
+                                        });
+                                    })
+                                    .catch(function (err) {
+                                        console.log(err);
+                                        res.send(err);
+                                    });
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+
+    function editWfhReq(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                console.log('sp_deleteOldTasks')
+                var someArray = req.body.TaskList
+                var arrayWithIndx = someArray.map(function (e, i) { return { obj: e, index: i } });
+                console.log(req.body);
+                pool2.then((pool) => {
+                    var request = pool.request();
+                    pool2.then((pool) => {
+                        var request = pool.request();
+                        request.input("InTime", mssql.VarChar(2000), req.body.InTime);
+                        request.input("OutTime", mssql.VarChar(2000), req.body.OutTime);
+                        request.input("UpdateDate", mssql.VarChar(2000), req.body.UpdateDate);
+                        request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
+                        request.execute('[sp_UpdateWfh]').then(function (data, recordsets, returnValue, affected) {
+                            console.log('updated wfh');
+                        }).catch(function (err) {
+                            console.log(err);
+
+                        });
+                    })
+                    request.input('userId', mssql.Int, arrayWithIndx[0].UserId);
+                    request.input("startTime", mssql.VarChar(100), arrayWithIndx[0].StartTime);
+                    request.execute('[sp_deleteOldTasks]').then(function (data, recordsets, returnValue, affected) {
+                        console.log('sp_addTasks')
+                        async.eachSeries(arrayWithIndx, function (member, callback) {
+                            pool2.then((pool) => {
+                                var request = pool.request();
+                                // console.log(member);
+                                request.input('id', mssql.Int, member.obj.Id);
+                                request.input('projectId', mssql.Int, member.obj.ProjectId);
+                                request.input('userId', mssql.Int, member.obj.UserId);
+                                request.input("description", mssql.VarChar(4000), member.obj.Description);
+                                request.input("startTime", mssql.VarChar(100), member.obj.StartTime);
+                                request.input("endTime", mssql.VarChar(100), member.obj.EndTime);
+                                request.input('billable', mssql.Int, member.obj.Billable);
+                                request.input('hours', mssql.Int, member.obj.Hours);
+                                request.execute('sp_addTask').then(function (data, recordsets, returnValue, affected) {
+                                    mssql.close();
+                                    // console.log("Index ==>", member.index);
+                                    if (member.index == (someArray.length - 1)) {
+                                        // console.log("in if");
+                                        res.send({
+                                            message: "Task-List edited and saved successfully!",
+                                            success: true,
+                                            // response: data.recordset
+                                        });
+                                        mssql.close();
+                                    } else {
+                                        console.log("in else");
+                                        callback();
+                                    }
+                                }).catch(function (err) {
+                                    console.log(err);
+                                    callback();
+                                });
+                            });
+                        });
+                    })
+                }).catch(function (err) {
+                    console.log(err);
+                    res.send(err);
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function pendingWfhTasksForApproval(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    console.log('sp_GetPendingWfhForApproval');
+                    request.input("userId", mssql.Int, req.query.userId);
+                    request
+                        .execute("sp_GetPendingWfhForApproval")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            var resp = data.recordset;
+                            var i = 0;
+                            async.eachSeries(data.recordset, (x, callback) => {
+                                if (x.StartDate) {
+                                    // console.log(x);
+                                    // console.log('sp_getTaskList')
+                                    var request = pool.request();
+                                    request.input("UserId", mssql.Int, x.Id);
+                                    request.input("Date", mssql.DateTime, x.StartDate);
+                                    request
+                                        .execute("sp_getTaskList")
+                                        .then(function (data, recordsets, returnValue, affected) {
+                                            console.log(data.recordset)
+                                            resp[i].TaskList = data.recordset;
+                                            i++;
+                                            callback();
+                                        })
+                                        .catch(function (err) {
+                                            console.log(err);
+                                            callback();
+                                        });
+                                } else {
+                                    resp[i].TaskList = [];
+                                    i++;
+                                    callback();
+                                }
+                            }, () => {
+                                mssql.close();
+                                res.send({
+                                    message: "Data retrieved successfully!",
+                                    success: true,
+                                    response: resp
+                                });
+                            })
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+
+    function getWfhDetailswithTask(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    var request = pool.request();
+                    console.log(req.query);
+                    request.input("wfhId", mssql.Int, req.query.wfhId);
+                    request.execute("[sp_GetWfhDetailsByWfhId]").then(function (data) {
+                        var request = pool.request();
+                        request.input("UserId", mssql.Int, data.recordset[0].UserId);
+                        request.input("Date", mssql.DateTime, data.recordset[0].StartDate);
+                        request
+                            .execute("sp_getTaskList")
+                            .then(function (data2, recordsets, returnValue, affected) {
+                                mssql.close();
+                                data.recordset[0].TaskList = data2.recordset;
+                                res.send({
+                                    message: "Data retrieved successfully!",
+                                    success: true,
+                                    response: data.recordset[0]
+                                });
+                            })
+                            .catch(function (err) {
+                                res.send(err);
+                                console.log(err);
+                            });
+                    })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+
+    function getUserTaskDetails(req, res) {
+        jwtToken.verifyRequest(req, res, decodedToken => {
+            console.log(decodedToken.email);
+            if (decodedToken.email) {
+                pool2.then(pool => {
+                    console.log('getUserTaskDetails');
+                    var request = pool.request();
+                    var obj = {};
+                    request.input("userId", mssql.Int, req.query.userId);
+                    request.input("startDate", mssql.VarChar(200), req.query.startDate);
+                    request.input("endDate", mssql.VarChar(200), req.query.endDate);
+                    request
+                        .execute("getUserTaskList")
+                        .then(function (data, recordsets, returnValue, affected) {
+                            mssql.close();
+                            data.recordset.forEach(x => {
+                                let date = moment(x.StartTime).format('YYYY-MM-DD');
+                                if (obj[date]) {
+                                    obj[date].push(x);
+                                } else {
+                                    obj[date] = [x];
+                                }
+                            })
+                            var resp = getDates(req.query.startDate, req.query.endDate, obj)
+                            res.send({
+                                message: "Data retrieved successfully!",
+                                success: true,
+                                response: resp
+                            });
+                        })
+                        .catch(function (err) {
+                            console.log(err);
+                            res.send(err);
+                        });
+                });
+            } else {
+                res.status("401");
+                res.send(invalidRequestError);
+            }
+        });
+    }
+
+    function getDates(startDate, stopDate, obj) {
+        var dateArray = [];
+        var currentDate = moment(startDate).format('YYYY-MM-DD');
+        var stopDate = moment(stopDate).format('YYYY-MM-DD');
+        console.log(currentDate, stopDate);
+        while (currentDate <= stopDate) {
+            if (!obj[currentDate]) {
+                obj[currentDate] = []
+            }
+            currentDate = moment(currentDate).add(1, 'days').format('YYYY-MM-DD');
+        }
+        var arrr = [];
+        Object.keys(obj).sort().forEach(function (key) {
+            arrr.push({
+                date: key,
+                task: obj[key]
+            })
+        });
+        return arrr;
+    }
 }
 module.exports.loadSchema = createSchema;

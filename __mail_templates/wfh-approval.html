@@ -229,19 +229,19 @@
                 <td bgcolor="#ffffff"
                     style="padding: 0 40px 0px; font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
                     {{#if approved}}
-                    <p style="margin: 0;">Your work from home
-                        request has been approved.</p>
+                    <p style="margin: 0;">Your Worklog
+                        has been approved.</p>
                     {{else}}
-                    <p style="margin: 0;">Your work from home
-                        request has been rejected.</p>
+                    <p style="margin: 0;">Your Worklog
+                        has been rejected.</p>
                     {{/if}}
                 </td>
             </tr>
             <tr>
-                <td  bgcolor="#ffffff"
-                style="padding: 0 40px 20px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
-               
-                    <p >Following are the details</p>
+                <td bgcolor="#ffffff"
+                    style="padding: 0 40px 20px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+
+                    <p>Following are the details</p>
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="520"
                         style="margin: auto; " class="email-container">
                         <tr>
@@ -267,22 +267,23 @@
                         <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
-                                WFH Start Date</td>
+                                <!-- WFH Start -->
+                                Date</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{from}}</td>
                         </tr>
-                        <tr>
+                        <!-- <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
                                 WFH End Date</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{to}}</td>
-                        </tr>
-                        <tr>
+                        </tr> -->
+                        <!-- <tr>
                             <td
                                 style="width: 125px;border-bottom: 1px solid #CCC;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">
                                 Reason of WFH</td>
                             <td style="border-bottom: 1px solid #CCC;padding: 5px 5px 5px 5px;">{{wfhDetails.Reason}}
                             </td>
-                        </tr>
+                        </tr> -->
                         {{#if approver.Reason}}
                         <tr>
                             <td style="width: 125px;background-color: #f3f3f3;padding: 5px 5px 5px 5px;">Comments</td>
@@ -296,10 +297,10 @@
                 <td bgcolor="#ffffff"
                     style="padding: 10px 40px 30px;font-family:'Montserrat', sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
                     {{#if pendingApprover}}
-                    Your Work from home request still needs to be approved by {{pendingApprover}}.
+                    Your Worklog still needs to be approved by {{pendingApprover}}.
                     {{else}}
                     {{#if approved}}
-                    <p style="margin: 0;">Your Work from home request
+                    <p style="margin: 0;">Your Worklog
                         is sucessfully approved.</p>
                     {{/if}}
                     {{/if}}
