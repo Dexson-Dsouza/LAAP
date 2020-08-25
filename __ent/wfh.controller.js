@@ -1055,6 +1055,20 @@ function createSchema(app, mssql, pool2) {
                                             success: true,
                                             // response: data.recordset
                                         });
+                                        if (req.body.confirmed == 1) {
+                                            var request = pool.request();
+                                            request.input("wfhId", mssql.Int, parseInt(req.body.wfhId));
+                                            request.input("userId", mssql.Int, parseInt(member.obj.UserId));
+                                            request
+                                                .execute('sp_saveAndSubmitTasklist')
+                                                .then(function (data, recordsets, returnValue, affected) {
+                                                    mailer.sendMailAfterRegWfhAdded(req.body.wfhId, member.obj.UserId);
+                                                })
+                                                .catch(function (err) {
+                                                    console.log(err);
+                                                    res.send(err);
+                                                });
+                                        }
                                         mssql.close();
                                     } else {
                                         console.log("in else");
