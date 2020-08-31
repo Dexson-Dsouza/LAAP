@@ -4,7 +4,7 @@ var handlebars = require("handlebars");
 var async = require("async");
 var jwtToken = require("./jwt.controller");
 var ICS_URL = 'http://careers.infinite-usa.com';
-var ICS_ADMIN_URL = "http://192.168.8.55:91";
+var ICS_ADMIN_URL = "http://10.40.1.55:91";
 var FCM = require('fcm-push');
 var serverKey = undefined;
 var fcm = new FCM('AAAAEorCvMk:APA91bFps9mtelVcroviLVhC3sW0mcWf6Pa4bB_WO3TT1KeR4lYnocXXXkYMflLg1wiC6g8v9e7iw_WTYLEm7FoM0yiPx_2bBIYXgT7OtfOU1CgHvAC0Je4_ngRBju_IUUsO5nHW2Z0V');
@@ -544,27 +544,52 @@ function getWfhApprovers(callback, userId) {
     var request = pool.request();
     request.input('userId', mssql.Int, userId);
     request.execute('sp_GetUserManagerDetails').then(function (data, recordsets, returnValue, affected) {
-      mssql.close();
       console.log("approvers")
       console.log(data.recordset);
-      var __o = data.recordset;
-      var emailId = [];
-      var pushId = [];
-      var names = [];
-      if (__o.length) {
-        for (var i = 0; i < __o.length; i++) {
-          if (parseInt(__o[i].Id) != parseInt(userId)) {
-            console.log("email user");
-            emailId.push(__o[i].EmailAddress);
-            names.push(__o[i].DisplayName);
-            if (__o[i].PushId != null) {
-              pushId.push(__o[i].PushId);
+      if (typeof (data.recordset[0]) == "undefined") {
+        var request2 = pool.request();
+        request2.execute('sp_GetAllHR').then(function (data, recordsets, returnValue, affected) {
+          mssql.close();
+          var __o = data.recordset;
+          var emailId = [];
+          var pushId = [];
+          var names = [];
+          if (__o.length) {
+            for (var i = 0; i < __o.length; i++) {
+              if (parseInt(__o[i].Id) != parseInt(userId)) {
+                console.log("email user");
+                emailId.push(__o[i].EmailAddress);
+                names.push(__o[i].DisplayName);
+                if (__o[i].PushId != null) {
+                  pushId.push(__o[i].PushId);
+                }
+              }
+            }
+          }
+          var c = { emailId: emailId, pushId: pushId, names: names }
+          callback(null, c);
+        });
+      } else {
+        mssql.close();
+        var __o = data.recordset;
+        var emailId = [];
+        var pushId = [];
+        var names = [];
+        if (__o.length) {
+          for (var i = 0; i < __o.length; i++) {
+            if (parseInt(__o[i].Id) != parseInt(userId)) {
+              console.log("email user");
+              emailId.push(__o[i].EmailAddress);
+              names.push(__o[i].DisplayName);
+              if (__o[i].PushId != null) {
+                pushId.push(__o[i].PushId);
+              }
             }
           }
         }
+        var c = { emailId: emailId, pushId: pushId, names: names }
+        callback(null, c);
       }
-      var c = { emailId: emailId, pushId: pushId, names: names }
-      callback(null, c);
     }).catch(function (err) {
       console.log(err);
       res.send(err);
@@ -627,9 +652,9 @@ function sendMailAfterApproveWfh(userId, wfhId) {
       approved: approver.Status == 1 ? true : false,
       pendingApprover: pendingApprover.join(','),
       approver: approver,
-      CC: HR_mail
+      // CC: HR_mail
     };
-    triggerMail("wfh-approval.html", replacements, aResult.join(","),approver.DisplayName+ " has updated your Worklog" );
+    triggerMail("wfh-approval.html", replacements, aResult.join(","), approver.Status == 1 ?"Worklog Approved":"Worklog Rejected");
     console.log("*******PushId Length****", aPushId.length);
     if (aPushId.length) {
       var message = {
@@ -1061,7 +1086,7 @@ function sendMailAfterRegWfhAdded(wfhId, userId) {
       loginLink: ICS_ADMIN_URL + "/dashboard/wfh-request",
       WfhDetails: bResult,
       names: names.join(","),
-      CC: HR_mail,
+      // CC: HR_mail,
       TaskList: Task,
     };
 
