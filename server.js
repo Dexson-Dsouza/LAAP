@@ -48,7 +48,7 @@ var corsOptions = {
       origin = "http://localhost:3000";
     }
     var originIsWhitelisted = whitelist.indexOf(origin) !== -1;
-    callback(originIsWhitelisted ? null : "Bad Request", originIsWhitelisted);
+    callback(originIsWhitelisted ? null : originIsWhitelisted, "Bad Request");
   },
   credentials: true
 };
@@ -65,28 +65,12 @@ app.use(
 
 var pool;
 function connectToDatabase() {
-  // var config = {
-  //   user: "sa",
-  //   password: "Infinite123#",
-  //   server: "INMDCS43873\\MSSQLSERVER14",
-  //   port: 1433,
-  //   database: "Infinite_L&A_v1",
-  //   options: {
-  //     encrypt: false
-  //   },
-  //   connectionTimeout: 300000,
-  //   requestTimeout: 300000,
-  //   pool: {
-  //     idleTimeoutMillis: 300000,
-  //     max: 100
-  //   }
-  // };
   var config = {
-    user: "fsliteadmin",
+    user: "sa",
     password: "Infinite123#",
-    server: "13.90.128.148",
+    server: "10.40.1.55",
     port: 1433,
-    database: "Infinite_L&A_V1",
+    database: "Infinite_L&A_v1",
     options: {
       encrypt: false
     },
@@ -97,6 +81,22 @@ function connectToDatabase() {
       max: 100
     }
   };
+  // var config = {
+  //   user: "fsliteadmin",
+  //   password: "Infinite123#",
+  //   server: "13.90.128.148",
+  //   port: 1433,
+  //   database: "Infinite_L&A_V1",
+  //   options: {
+  //     encrypt: false
+  //   },
+  //   connectionTimeout: 300000,
+  //   requestTimeout: 300000,
+  //   pool: {
+  //     idleTimeoutMillis: 300000,
+  //     max: 100
+  //   }
+  // };
   pool = new mssql.ConnectionPool(config)
     .connect()
     .then(pool => {
